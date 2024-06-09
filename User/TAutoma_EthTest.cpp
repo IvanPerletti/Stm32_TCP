@@ -2,6 +2,32 @@
 #include <stdio.h>
 #include <string.h>
 
+ 
+/*Static IP ADDRESS: IP_ADDR0.IP_ADDR1.IP_ADDR2.IP_ADDR3 */
+#define IP_ADDR0   192
+#define IP_ADDR1   168
+#define IP_ADDR2   1
+#define IP_ADDR3   10
+   
+/*NETMASK*/
+#define NETMASK_ADDR0   255
+#define NETMASK_ADDR1   255
+#define NETMASK_ADDR2   255
+#define NETMASK_ADDR3   0
+
+/*Gateway Address*/
+#define GW_ADDR0   192
+#define GW_ADDR1   168
+#define GW_ADDR2   1
+#define GW_ADDR3   254
+
+#define SERVER_IP_ADDR0   192
+#define SERVER_IP_ADDR1   168
+#define SERVER_IP_ADDR2   1
+#define SERVER_IP_ADDR3   105
+
+#define DEST_PORT       7
+
 TAutomaEth_Test automaEth;
 
 TAutomaEth_Test::TAutomaEth_Test(void):
@@ -22,6 +48,8 @@ TAutomaEth_Test::TAutomaEth_Test(void):
 //---------------------------------------------------------------------------
 void TAutomaEth_Test::executeSM()
 {
+	pEth->poll(tClock.watch());
+
 	switch(state)
 	{
 	case ST_RESET:
@@ -57,27 +85,40 @@ void TAutomaEth_Test::stat_Init()
 
 	if (pEth != NULL)
 	{
+		ip_addr_t ip_local;
+		ip_addr_t netmask;
+		ip_addr_t gw;
+		ip_addr_t ip_server;
+
 		if (pEth->isOpen())
 		{
 			pEth->close();
 		}
 
-		// is possible to do setupCOM only once because pEth232 and pEth232_1 are pointer to the same physical port (4: comCM25)
+		IP4_ADDR(&ip_local, IP_ADDR0, IP_ADDR1, IP_ADDR2, IP_ADDR3);
+		IP4_ADDR(&netmask, NETMASK_ADDR0, NETMASK_ADDR1 , NETMASK_ADDR2, NETMASK_ADDR3);
+		IP4_ADDR(&gw, GW_ADDR0, GW_ADDR1, GW_ADDR2, GW_ADDR3);
+		IP4_ADDR(&ip_server, SERVER_IP_ADDR0, SERVER_IP_ADDR1, SERVER_IP_ADDR2, SERVER_IP_ADDR3);
+		pEth->setupEth(ip_local, netmask, gw, ip_server);
+		
 		err = pEth->open();
 	}
 
-	if (pEth_1 != NULL)
-	{
-		if (pEth_1->isOpen())
-		{
-			pEth_1->close();
-		}
-		err_1 = pEth_1->open();
-	}
+//	if (pEth_1 != NULL)
+//	{
+//		if (pEth_1->isOpen())
+//		{
+//			pEth_1->close();
+//		}
+//		
+//		err_1 = pEth_1->open();
+//	}
 
 	if (!err && !err_1)
 	{
-		setState(ST_READ);
+		//setState(ST_READ);
+			bNeedToTransmit = 1;
+		setState(ST_TRANSM);
 	}
 }
 //---------------------------------------------------------------------------
@@ -106,7 +147,7 @@ void TAutomaEth_Test::stat_Read()
 		}
 	}
 
-	setState(ST_TRANSM);
+	//setState(ST_TRANSM);
 
 	//	if(timoutRX.exceed(5000)) //
 	//	{
@@ -121,8 +162,13 @@ void TAutomaEth_Test::stat_Transm()
 	//Transmit what we have read in previous state
 	if(bNeedToTransmit)
 	{
-		pEth->write(msgRx,nBytesAvail);
-		bNeedToTransmit = 0;
+		if (pEth->isOpen()) {
+			//pEth->write(msgRx,nBytesAvail);
+			pEth->write("test", 4);
+			bNeedToTransmit = 0;
+		
+			setState(ST_READ);
+		}
 	}
 	if(bNeedToTransmit_1)
 	{
@@ -130,7 +176,6 @@ void TAutomaEth_Test::stat_Transm()
 		bNeedToTransmit_1 = 0;
 	}
 
-	setState(ST_READ);
 }
 
 //---------------------------------------------------------------------------

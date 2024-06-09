@@ -23,17 +23,19 @@ public:
 
 	void subscribe(void);
 
+	void setupEth(ip_addr_t ip_local, ip_addr_t mask, ip_addr_t gw, ip_addr_t ip_server);
+
 	void close(void);
 	void closeAllUsers(void);
 	char open(void);
 	bool isOpen(void);
+	void poll(uint32_t localTime);
 
 	int read(char *rxByte);
 	bool isToRead(void);
 	int bytesAvailable(void);
 
-	unsigned char write(const volatile char *msg,
-			short int charNum2Send);
+	unsigned char write(const char *msg, unsigned short int charNum2Send);
 	void write(void);
 	int bytesToWrite(void);
 	void resetBytesRX(void);

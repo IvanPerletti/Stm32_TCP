@@ -22,11 +22,5 @@
 #define MMM_DD_YYYY_DATE     ("Jul 20 2023") // "May 30 2018" "May  8 2018"
 // FW name MC_XX_YY_ZZ_OD4000-PA (Ats Like)�
 // FW name MC_XX_YY_ZZ_OD4000-PD (Dll )
-long getFwVersion(void);
-long monthBuild( const char * u8aDate);
-void MainAutoma_PID_Init(void);
-void MainAutoma_GEN_Init(void);
-void MainAutoma_CALYPSO_Init(void);
 
-void MainInizialization(void);
 
