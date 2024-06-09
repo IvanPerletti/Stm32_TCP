@@ -34,6 +34,14 @@ void TVirtual_Eth::subscribe(void)
 	}
 }
 
+void TVirtual_Eth::setupEth(ip_addr_t ip_local, ip_addr_t mask, ip_addr_t gw, ip_addr_t ip_server)
+{
+	if(pEthLAN8720)
+	{
+		pEthLAN8720->setupEth(ip_local, mask, gw, ip_server);
+	}
+}
+
 //------------------------------------------------------------------------------
 /**
  * @brief Close virtually specific instance of TSerial232 or TSerial485
@@ -67,6 +75,11 @@ char TVirtual_Eth::open(void)
 bool TVirtual_Eth::isOpen(void)
 {
 	return pEthLAN8720->isInstance_open(eth_InstID);
+}
+
+void TVirtual_Eth::poll(uint32_t localTime)
+{
+	pEthLAN8720->poll(localTime);
 }
 
 //------------------------------------------------------------------------------

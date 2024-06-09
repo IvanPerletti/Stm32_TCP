@@ -23,10 +23,13 @@ public:
 
 	void subscribe(void);
 
+	void setupEth(ip_addr_t ip_local, ip_addr_t mask, ip_addr_t gw, ip_addr_t ip_server);
+
 	void close(void);
 	void closeAllUsers(void);
 	char open(void);
 	bool isOpen(void);
+	void poll(uint32_t localTime);
 
 	int read(char *rxByte);
 	bool isToRead(void);

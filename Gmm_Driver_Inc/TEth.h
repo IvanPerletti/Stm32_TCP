@@ -39,6 +39,24 @@
 
 //----Private Struct-----------------------------------------------------------
 
+/* protocol states */
+enum client_states
+{
+  ES_NOT_CONNECTED = 0,
+  ES_CONNECTED,
+  ES_RECEIVED,
+  ES_CLOSING,
+};
+
+/* structure to be passed as argument to the tcp callbacks */
+struct client
+{
+  enum client_states state; /* connection status */
+  uint8_t retries;
+  struct tcp_pcb *pcb;          /* pointer on the current tcp_pcb */
+  struct pbuf *p_tx;            /* pointer on pbuf to be transmitted */
+};
+
 //--------------------------------------------------------------------------------
 class TVirtual_Eth; // Forward declaration
 
@@ -88,9 +106,21 @@ protected:
 
 	volatile char bCircArrRx[RXBUFFERSIZE];/*!< circular buffer for RX msg*/
 	volatile char bCircArrTx[RXBUFFERSIZE];/*!< circular buffer for TX msg*/
-	ETH_InitTypeDef ETH_InitStructure;
-	__IO uint32_t  EthStatus;
-	struct netif gnetif;
+
+	static ETH_InitTypeDef ETH_InitStructure;
+	static __IO uint32_t  EthStatus;
+	static __IO uint8_t EthLinkStatus;
+	static struct netif gnetif;
+
+  static ip_addr_t ip_local;
+  static ip_addr_t netmask;
+  static ip_addr_t gateway;
+  static ip_addr_t ip_server;
+
+	static struct client *esTx;
+	static struct tcp_pcb *pcbTx;
+
+
 protected://#####################################################################
 
 	unsigned char RCC_Configuration(void);
@@ -105,7 +135,18 @@ protected://####################################################################
 
 	unsigned char setup_HW(void);
 
+	struct tcp_pcb *client_pcb;
+	uint32_t TCPTimer;
+	uint32_t ARPTimer;
+
 public://#####################################################################
+
+	void setupEth(ip_addr_t ip_loc, ip_addr_t mask, ip_addr_t gw, ip_addr_t ip_srv) {
+		ip_local = ip_loc;
+		netmask = mask;
+		gateway = gw;
+		ip_server = ip_srv;
+	}
 
 	void  cleanAllLocalVariables(void);
 
@@ -114,6 +155,8 @@ public://#####################################################################
 	char isOpen (void);
 
 	void close (void);
+
+	void poll(uint32_t localTime);
 
 	void ETH_puts(const volatile char *s);
 
@@ -168,6 +211,7 @@ public://#####################################################################
 	}
 	
 	friend void ETH_link_callback(struct netif *netif);
+	friend void tcp_client_handle (struct tcp_pcb *tpcb, struct client *es);
 
 };
 

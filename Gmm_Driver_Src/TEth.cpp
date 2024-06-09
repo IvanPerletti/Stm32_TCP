@@ -17,117 +17,415 @@
 
 #include "TEth.h"
 extern "C"{
-#include "stm32f4xx_rcc.h"
-//#include "stm32f4_discovery.h"
-#include "stm32f4xx_gpio.h"
-#include "stm32f4x7_eth.h"
-#include "lwip/mem.h"
-#include "lwip/memp.h"
-#include "lwip/tcp.h"
-#include "lwip/tcp_impl.h"
-#include "lwip/udp.h"
-#include "netif/etharp.h"
-#include "ethernetif.h"
+	#include <string.h>
+	#include "stm32f4xx_rcc.h"
+	#include "stm32f4xx_gpio.h"
+	#include "stm32f4x7_eth.h"
+	#include "lwip/mem.h"
+	#include "lwip/memp.h"
+	#include "lwip/tcp.h"
+	#include "lwip/tcp_impl.h"
+	#include "lwip/udp.h"
+	#include "netif/etharp.h"
+	#include "ethernetif.h"
 }
+
 //----Private Struct-----------------------------------------------------------
 
-//void ETH_link_callback(struct netif *netif)
-//{
-//  __IO uint32_t timeout = 0;
-// uint32_t tmpreg;
-// uint16_t RegValue;
-//  struct ip_addr ipaddr;
-//  struct ip_addr netmask;
-//  struct ip_addr gw;
-//  uint8_t iptab[4] = {0};
-//  uint8_t iptxt[20];
+ETH_InitTypeDef TEth::ETH_InitStructure;
+__IO uint32_t TEth::EthStatus;
+__IO uint8_t TEth::EthLinkStatus;
 
-//  if(netif_is_link_up(netif))
-//  {
-//    /* Restart the auto-negotiation */
-//    if(ETH_InitStructure.ETH_AutoNegotiation != ETH_AutoNegotiation_Disable)
-//    {
-//      /* Reset Timeout counter */
-//      timeout = 0;
+struct netif TEth::gnetif;
+ip_addr_t TEth::ip_local;
+ip_addr_t TEth::netmask;
+ip_addr_t TEth::gateway;
+ip_addr_t TEth::ip_server;
 
-//      /* Enable auto-negotiation */
-//      ETH_WritePHYRegister(ETH_PHY_ADDRESS, PHY_BCR, PHY_AutoNegotiation);
+struct client *TEth::esTx;
+struct tcp_pcb *TEth::pcbTx;
 
-//      /* Wait until the auto-negotiation will be completed */
-//      do
-//      {
-//        timeout++;
-//      } while (!(ETH_ReadPHYRegister(ETH_PHY_ADDRESS, PHY_BSR) & PHY_AutoNego_Complete) && (timeout < (uint32_t)PHY_READ_TO));  
+extern "C" {
+	void Delay(int ms)
+	{
+		ms = 0;
+	}
+}
 
-//      /* Reset Timeout counter */
-//      timeout = 0;
+err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
+void tcp_client_connection_close(struct tcp_pcb *tpcb, struct client * es);
+err_t tcp_client_poll(void *arg, struct tcp_pcb *tpcb);
+err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
+void tcp_client_send(struct tcp_pcb *tpcb, struct client * es);
+err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err);
 
-//      /* Read the result of the auto-negotiation */
-//      RegValue = ETH_ReadPHYRegister(ETH_PHY_ADDRESS, PHY_SR);
+void ETH_link_callback(struct netif *netif)
+{
+	__IO uint32_t timeout = 0;
+	uint32_t tmpreg;
+	uint16_t RegValue;
 
-//      /* Configure the MAC with the Duplex Mode fixed by the auto-negotiation process */
-//			/* Mask out bits which are not for speed and link indication, bits 4:2 are used */
-//			RegValue = (RegValue >> 2) & 0x07;
+  if(netif_is_link_up(netif))
+  {
+    /* Restart the auto-negotiation */
+    if(TEth::ETH_InitStructure.ETH_AutoNegotiation != ETH_AutoNegotiation_Disable)
+    {
+      /* Reset Timeout counter */
+      timeout = 0;
 
-//			/* Switch statement */
-//			switch (RegValue) {
-//				case 1: /* Base 10, half-duplex */
-//					ETH_InitStructure.ETH_Speed = ETH_Speed_10M;
-//					ETH_InitStructure.ETH_Mode = ETH_Mode_HalfDuplex;
-//					break;
-//				case 2: /* Base 100, half-duplex */
-//					ETH_InitStructure.ETH_Speed = ETH_Speed_100M;
-//					ETH_InitStructure.ETH_Mode = ETH_Mode_HalfDuplex;
-//					break;
-//				case 5: /* Base 10, full-duplex */
-//					ETH_InitStructure.ETH_Speed = ETH_Speed_10M;
-//					ETH_InitStructure.ETH_Mode = ETH_Mode_FullDuplex;
-//					break;
-//				case 6: /* Base 100, full-duplex */
-//					ETH_InitStructure.ETH_Speed = ETH_Speed_100M;
-//					ETH_InitStructure.ETH_Mode = ETH_Mode_FullDuplex;
-//					break;
-//				default:
-//					break;
-//			}
+      /* Enable auto-negotiation */
+      ETH_WritePHYRegister(ETH_PHY_ADDRESS, PHY_BCR, PHY_AutoNegotiation);
 
-//      /*------------------------ ETHERNET MACCR Re-Configuration --------------------*/
-//      /* Get the ETHERNET MACCR value */  
-//      tmpreg = ETH->MACCR;
+      /* Wait until the auto-negotiation will be completed */
+      do
+      {
+        timeout++;
+      } while (!(ETH_ReadPHYRegister(ETH_PHY_ADDRESS, PHY_BSR) & PHY_AutoNego_Complete) && (timeout < (uint32_t)PHY_READ_TO));  
 
-//      /* Set the FES bit according to ETH_Speed value */ 
-//      /* Set the DM bit according to ETH_Mode value */ 
-//      tmpreg |= (uint32_t)(ETH_InitStructure.ETH_Speed | ETH_InitStructure.ETH_Mode);
+      /* Reset Timeout counter */
+      timeout = 0;
 
-//      /* Write to ETHERNET MACCR */
-//      ETH->MACCR = (uint32_t)tmpreg;
+      /* Read the result of the auto-negotiation */
+      RegValue = ETH_ReadPHYRegister(ETH_PHY_ADDRESS, PHY_SR);
 
-//      _eth_delay_(ETH_REG_WRITE_DELAY);
-//      tmpreg = ETH->MACCR;
-//      ETH->MACCR = tmpreg;
-//    }
+      /* Configure the MAC with the Duplex Mode fixed by the auto-negotiation process */
+			/* Mask out bits which are not for speed and link indication, bits 4:2 are used */
+			RegValue = (RegValue >> 2) & 0x07;
 
-//    /* Restart MAC interface */
-//    ETH_Start();
+			/* Switch statement */
+			switch (RegValue) {
+				case 1: /* Base 10, half-duplex */
+					TEth::ETH_InitStructure.ETH_Speed = ETH_Speed_10M;
+					TEth::ETH_InitStructure.ETH_Mode = ETH_Mode_HalfDuplex;
+					break;
+				case 2: /* Base 100, half-duplex */
+					TEth::ETH_InitStructure.ETH_Speed = ETH_Speed_100M;
+					TEth::ETH_InitStructure.ETH_Mode = ETH_Mode_HalfDuplex;
+					break;
+				case 5: /* Base 10, full-duplex */
+					TEth::ETH_InitStructure.ETH_Speed = ETH_Speed_10M;
+					TEth::ETH_InitStructure.ETH_Mode = ETH_Mode_FullDuplex;
+					break;
+				case 6: /* Base 100, full-duplex */
+					TEth::ETH_InitStructure.ETH_Speed = ETH_Speed_100M;
+					TEth::ETH_InitStructure.ETH_Mode = ETH_Mode_FullDuplex;
+					break;
+				default:
+					break;
+			}
 
-//    IP4_ADDR(&ipaddr, IP_ADDR0, IP_ADDR1, IP_ADDR2, IP_ADDR3);
-//    IP4_ADDR(&netmask, NETMASK_ADDR0, NETMASK_ADDR1 , NETMASK_ADDR2, NETMASK_ADDR3);
-//    IP4_ADDR(&gw, GW_ADDR0, GW_ADDR1, GW_ADDR2, GW_ADDR3);
+      /*------------------------ ETHERNET MACCR Re-Configuration --------------------*/
+      /* Get the ETHERNET MACCR value */  
+      tmpreg = ETH->MACCR;
 
-//    netif_set_addr(&gnetif, &ipaddr , &netmask, &gw);
-//    
-//    /* When the netif is fully configured this function must be called.*/
-//    netif_set_up(&gnetif);    
+      /* Set the FES bit according to ETH_Speed value */ 
+      /* Set the DM bit according to ETH_Mode value */ 
+      tmpreg |= (uint32_t)(TEth::ETH_InitStructure.ETH_Speed | TEth::ETH_InitStructure.ETH_Mode);
 
-//		EthLinkStatus = 0;
-//  }
-//  else
-//  {
-//    ETH_Stop();
-//    /*  When the netif link is down this function must be called.*/
-//    netif_set_down(&gnetif);
-//  }
-//}
+      /* Write to ETHERNET MACCR */
+      ETH->MACCR = (uint32_t)tmpreg;
+
+      //_eth_delay_(ETH_REG_WRITE_DELAY);
+      tmpreg = ETH->MACCR;
+      ETH->MACCR = tmpreg;
+    }
+
+    /* Restart MAC interface */
+    ETH_Start();
+
+    netif_set_addr(&TEth::gnetif, &TEth::ip_local , &TEth::netmask, &TEth::gateway);
+    
+    /* When the netif is fully configured this function must be called.*/
+    netif_set_up(&TEth::gnetif);    
+
+		TEth::EthLinkStatus = 0;
+  }
+  else
+  {
+    ETH_Stop();
+    /*  When the netif link is down this function must be called.*/
+    netif_set_down(&TEth::gnetif);
+  }
+}
+
+/* Handle the incoming TCP Data */
+
+void tcp_client_handle (struct tcp_pcb *tpcb, struct client *es)
+{
+	TEth::esTx = es;
+	TEth::pcbTx = tpcb;
+}
+
+/**
+  * @brief tcp_receiv callback
+  * @param arg: argument to be passed to receive callback 
+  * @param tpcb: tcp connection control block 
+  * @param err: receive error code 
+  * @retval err_t: retuned error  
+  */
+err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err)
+{ 
+  struct client *es;
+  err_t ret_err;
+  
+
+  LWIP_ASSERT("arg != NULL",arg != NULL);
+  
+  es = (struct client *)arg;
+  
+  /* if we receive an empty tcp frame from server => close connection */
+  if (p == NULL)
+  {
+    /* remote host closed connection */
+    es->state = ES_CLOSING;
+    if(es->p_tx == NULL)
+    {
+       /* we're done sending, close connection */
+       tcp_client_connection_close(tpcb, es);
+    }
+    else
+    {    
+      /* send remaining data*/
+      tcp_client_send(tpcb, es);
+    }
+    ret_err = ERR_OK;
+  }   
+  /* else : a non empty frame was received from echo server but for some reason err != ERR_OK */
+  else if(err != ERR_OK)
+  {
+    /* free received pbuf*/
+    if (p != NULL)
+    {
+      es->p_tx = NULL;
+      pbuf_free(p);
+    }
+
+    ret_err = err;
+  }
+  else if(es->state == ES_CONNECTED)
+  {       
+    /* Acknowledge data reception */
+    tcp_recved(tpcb, p->tot_len);  
+
+    /* handle the received data */
+    tcp_client_handle(tpcb, es);
+    
+    pbuf_free(p);
+
+    ret_err = ERR_OK;
+  }
+
+  /* data received when connection already closed */
+  else
+  {
+    /* Acknowledge data reception */
+    tcp_recved(tpcb, p->tot_len);
+    
+    /* free pbuf and do nothing */
+    pbuf_free(p);
+    ret_err = ERR_OK;
+  }
+  return ret_err;
+}
+
+/**
+  * @brief function used to send data
+  * @param  tpcb: tcp control block
+  * @param  es: pointer on structure of type client containing info on data 
+  *             to be sent
+  * @retval None 
+  */
+void tcp_client_send(struct tcp_pcb *tpcb, struct client * es)
+{
+  struct pbuf *ptr;
+  err_t wr_err = ERR_OK;
+ 
+  while ((wr_err == ERR_OK) &&
+         (es->p_tx != NULL) && 
+         (es->p_tx->len <= tcp_sndbuf(tpcb)))
+  {
+    
+    /* get pointer on pbuf from es structure */
+    ptr = es->p_tx;
+
+    /* enqueue data for transmission */
+    wr_err = tcp_write(tpcb, ptr->payload, ptr->len, 1);
+    
+    if (wr_err == ERR_OK)
+    { 
+      /* continue with next pbuf in chain (if any) */
+      es->p_tx = ptr->next;
+      
+      if(es->p_tx != NULL)
+      {
+        /* increment reference count for es->p */
+        pbuf_ref(es->p_tx);
+      }
+      
+      /* free pbuf: will free pbufs up to es->p (because es->p has a reference count > 0) */
+      pbuf_free(ptr);
+   }
+   else if(wr_err == ERR_MEM)
+   {
+      /* we are low on memory, try later, defer to poll */
+     es->p_tx = ptr;
+   }
+   else
+   {
+     /* other problem ?? */
+   }
+  }
+}
+
+/**
+  * @brief  This function implements the tcp_poll callback function
+  * @param  arg: pointer on argument passed to callback
+  * @param  tpcb: tcp connection control block
+  * @retval err_t: error code
+  */
+err_t tcp_client_poll(void *arg, struct tcp_pcb *tpcb)
+{
+  err_t ret_err;
+  struct client *es;
+
+  es = (struct client*)arg;
+  if (es != NULL)
+  {
+    if (es->p_tx != NULL)
+    {
+      /* there is a remaining pbuf (chain) , try to send data */
+      tcp_client_send(tpcb, es);
+    }
+    else
+    {
+      /* no remaining pbuf (chain)  */
+      if(es->state == ES_CLOSING)
+      {
+        /* close tcp connection */
+        tcp_client_connection_close(tpcb, es);
+      }
+    }
+    ret_err = ERR_OK;
+  }
+  else
+  {
+    /* nothing to be done */
+    tcp_abort(tpcb);
+    ret_err = ERR_ABRT;
+  }
+  return ret_err;
+}
+
+/**
+  * @brief  This function implements the tcp_sent LwIP callback (called when ACK
+  *         is received from remote host for sent data) 
+  * @param  arg: pointer on argument passed to callback
+  * @param  tcp_pcb: tcp connection control block
+  * @param  len: length of data sent 
+  * @retval err_t: returned error code
+  */
+err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len)
+{
+  struct client *es;
+
+  LWIP_UNUSED_ARG(len);
+
+  es = (struct client *)arg;
+  
+  if(es->p_tx != NULL)
+  {
+    /* still got pbufs to send */
+    tcp_client_send(tpcb, es);
+  }
+  else
+  {
+    /* if no more data to send and client closed connection*/
+    if(es->state == ES_CLOSING)
+    	tcp_client_connection_close(tpcb, es);
+  }
+
+  return ERR_OK;
+}
+
+/**
+  * @brief This function is used to close the tcp connection with server
+  * @param tpcb: tcp connection control block
+  * @param es: pointer on client structure
+  * @retval None
+  */
+void tcp_client_connection_close(struct tcp_pcb *tpcb, struct client * es )
+{
+  /* remove callbacks */
+  tcp_recv(tpcb, NULL);
+  tcp_sent(tpcb, NULL);
+  tcp_poll(tpcb, NULL,0);
+
+  if (es != NULL)
+  {
+    mem_free(es);
+  }
+
+  /* close tcp connection */
+  tcp_close(tpcb);
+  
+}
+
+/**
+  * @brief Function called when TCP connection established
+  * @param tpcb: pointer on the connection contol block
+  * @param err: when connection correctly established err should be ERR_OK 
+  * @retval err_t: returned error 
+  */
+err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
+{
+	struct client *es = NULL;
+	
+  if (err == ERR_OK)   
+  {
+    /* allocate structure es to maintain tcp connection informations */
+    es = (struct client *)mem_malloc(sizeof(struct client));
+  
+    if (es != NULL)
+    {
+      es->state = ES_CONNECTED;
+      es->pcb = tpcb;
+      es->retries = 0;
+      es->p_tx = NULL;      
+         
+			/* pass newly allocated es structure as argument to tpcb */
+			tcp_arg(tpcb, es);
+
+			/* initialize LwIP tcp_recv callback function */ 
+			tcp_recv(tpcb, tcp_client_recv);
+
+			/* initialize LwIP tcp_sent callback function */
+			tcp_sent(tpcb, tcp_client_sent);
+
+			/* initialize LwIP tcp_poll callback function */
+			tcp_poll(tpcb, tcp_client_poll, 1);    
+
+	    /* handle the TCP data */
+	    tcp_client_handle(tpcb, es);
+			
+      return ERR_OK;
+    }
+    else
+    {
+      /* close connection */
+      tcp_client_connection_close(tpcb, es);
+      
+      /* return memory allocation error */
+      return ERR_MEM;  
+    }
+  }
+  else
+  {
+    /* close connection */
+    tcp_client_connection_close(tpcb, es);
+  }
+  return err;
+}
+    
 
 //----Class Methods------------------------------------------------------------------------
 /**
@@ -356,7 +654,7 @@ unsigned char TEth::ETH_StructConfig(void)
  * @brief Configure the Nested Vectored Interrupt Controller (NVIC)
  * @retval Error number - see USART_Init
  */
-unsigned char  TEth::NVIC_StructConfig(void)
+unsigned char TEth::NVIC_StructConfig(void)
 {
 	return(0x00);
 }
@@ -380,10 +678,10 @@ unsigned char TEth::setup_HW(void)
   /* Reset ETHERNET on AHB Bus */
   ETH_DeInit();
 	
-	error|=RCC_Configuration();/*!< System Clocks Configuration */
-	error|=GPIO_Config();/*!< GPIO Configuration */
-	error|=ETH_StructConfig();/*!< stpIndex configuration */
-	error|=NVIC_StructConfig();/*!< Nested VEctor Interrupt Routine*/
+	error |= RCC_Configuration();/*!< System Clocks Configuration */
+	error |= GPIO_Config();/*!< GPIO Configuration */
+	error |= ETH_StructConfig();/*!< stpIndex configuration */
+	error |= NVIC_StructConfig();/*!< Nested VEctor Interrupt Routine*/
 
 	return (error);
 }
@@ -397,57 +695,61 @@ unsigned char TEth::setup_HW(void)
  */
 char TEth::open(void)
 {
-	unsigned char error = 0;
-  struct ip_addr ipaddr;
-  struct ip_addr netmask;
-  struct ip_addr gw;
+	char error = 0;
 
 	error = setup_HW();
 
-  /* Initializes the dynamic memory heap defined by MEM_SIZE.*/
-  mem_init();
+	if (error == 0) {
+		/* Initializes the dynamic memory heap defined by MEM_SIZE.*/
+		mem_init();
 
-  /* Initializes the memory pools defined by MEMP_NUM_x.*/
-  memp_init();
+		/* Initializes the memory pools defined by MEMP_NUM_x.*/
+		memp_init();
+		
+		/* - netif_add(struct netif *netif, struct ip_addr *ipaddr,
+		struct ip_addr *netmask, struct ip_addr *gw,
+		void *state, err_t (* init)(struct netif *netif),
+		err_t (* input)(struct pbuf *p, struct netif *netif))
 
-  IP4_ADDR(&ipaddr, IP_ADDR0, IP_ADDR1, IP_ADDR2, IP_ADDR3);
-  IP4_ADDR(&netmask, NETMASK_ADDR0, NETMASK_ADDR1 , NETMASK_ADDR2, NETMASK_ADDR3);
-  IP4_ADDR(&gw, GW_ADDR0, GW_ADDR1, GW_ADDR2, GW_ADDR3);
-  
-  /* - netif_add(struct netif *netif, struct ip_addr *ipaddr,
-  struct ip_addr *netmask, struct ip_addr *gw,
-  void *state, err_t (* init)(struct netif *netif),
-  err_t (* input)(struct pbuf *p, struct netif *netif))
+		Adds your network interface to the netif_list. Allocate a struct
+		netif and pass a pointer to this structure as the first argument.
+		Give pointers to cleared ip_addr structures when using DHCP,
+		or fill them with sane numbers otherwise. The state pointer may be NULL.
 
-  Adds your network interface to the netif_list. Allocate a struct
-  netif and pass a pointer to this structure as the first argument.
-  Give pointers to cleared ip_addr structures when using DHCP,
-  or fill them with sane numbers otherwise. The state pointer may be NULL.
+		The init function pointer must point to a initialization function for
+		your ethernet netif interface. The following code illustrates it's use.*/
+		netif_add(&gnetif, &ip_local, &netmask, &gateway, NULL, &ethernetif_init, &ethernet_input);
 
-  The init function pointer must point to a initialization function for
-  your ethernet netif interface. The following code illustrates it's use.*/
-  netif_add(&gnetif, &ipaddr, &netmask, &gw, NULL, &ethernetif_init, &ethernet_input);
+		/*  Registers the default network interface.*/
+		netif_set_default(&gnetif);
 
-  /*  Registers the default network interface.*/
-  netif_set_default(&gnetif);
+		if (EthStatus == (ETH_INIT_FLAG | ETH_LINK_FLAG))
+		{ 
+			/* Set Ethernet link flag */
+			gnetif.flags |= NETIF_FLAG_LINK_UP;
 
-  if (EthStatus == (ETH_INIT_FLAG | ETH_LINK_FLAG))
-  { 
-    /* Set Ethernet link flag */
-    gnetif.flags |= NETIF_FLAG_LINK_UP;
-
-    /* When the netif is fully configured this function must be called.*/
-    netif_set_up(&gnetif);
-  }
-  else
-  {
-    /*  When the netif link is down this function must be called.*/
-    netif_set_down(&gnetif);
-  }
-  
-  /* Set the link callback function, this function is called on change of link status*/
-  // !!!!! netif_set_link_callback(&gnetif, ETH_link_callback);
-
+			/* When the netif is fully configured this function must be called.*/
+			netif_set_up(&gnetif);
+		}
+		else
+		{
+			/*  When the netif link is down this function must be called.*/
+			netif_set_down(&gnetif);
+		}
+		
+		/* Set the link callback function, this function is called on change of link status*/
+		netif_set_link_callback(&gnetif, ETH_link_callback);
+	
+		/* create new tcp pcb */
+		client_pcb = tcp_new();
+		
+		if (client_pcb != NULL)
+			/* connect to destination address/port */
+			error = tcp_connect(client_pcb, &ip_server , DEST_PORT, tcp_client_connected);
+		else
+			error = ERR_MEM;
+	}
+		
 	return(error);
 }
 //-----------------------------------------------------------------------------------------
@@ -470,6 +772,32 @@ void TEth::close (void)
 
 }
 
+void TEth::poll(uint32_t localTime)
+{
+	/* check if any packet received */
+	if (ETH_CheckFrameReceived())
+	{ 
+		/* process received ethernet packet */
+		ethernetif_input(&gnetif);
+	}
+    /* handle periodic timers for LwIP */
+#if LWIP_TCP
+  /* TCP periodic process every 250 ms */
+  if (localTime - TCPTimer >= TCP_TMR_INTERVAL)
+  {
+    TCPTimer =  localTime;
+    tcp_tmr();
+  }
+#endif
+
+  /* ARP periodic process every 5s */
+  if ((localTime - ARPTimer) >= ARP_TMR_INTERVAL)
+  {
+    ARPTimer =  localTime;
+    etharp_tmr();
+  }
+}
+
 //-----------------------------------------------------------------------------------------
 /**
  * @brief Transmit a string of characters via the USART specified in stpIndex.
@@ -485,7 +813,22 @@ void TEth::close (void)
  * */
 void TEth::ETH_puts(const volatile char *s)
 {
+	u8_t data[100];
+	
+	strncpy((char*)data, (const char *)s, sizeof(data) - 1);
+	data[sizeof(data) - 1] = '\0';
 
+	/* allocate pbuf */
+	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, strlen((char*)data) , PBUF_POOL);
+ 
+	if (esTx->p_tx)
+	{       
+		/* copy data to pbuf */
+		pbuf_take(esTx->p_tx, (char*)data, strlen((char*)data));
+
+		/* send data */
+		tcp_client_send(esTx->pcb, esTx);
+	}	
 }
 
 //-----------------------------------------------------------------------------------------
@@ -594,13 +937,22 @@ int TEth::bytesToWrite(void)
 unsigned char TEth::write(const volatile char *msg,
 		short int charNum2Send)
 {
-	unsigned short int  qq=0;
-	int delta;
+	u8_t data[100];
+	
+	strncpy((char*)data, (const char *)msg, charNum2Send);
+	data[sizeof(data) - 1] = '\0';
 
-	if (charNum2Send>0 && charNum2Send<=RXBUFFERSIZE)
-	{
-	}
-	return (0x02);// Too much character to send: stay < RXBUFFERSIZE
+	/* allocate pbuf */
+	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, charNum2Send , PBUF_POOL);
+ 
+	if (esTx->p_tx)
+	{       
+		/* copy data to pbuf */
+		pbuf_take(esTx->p_tx, (char*)data, strlen((char*)data));
+
+		/* send data */
+		tcp_client_send(esTx->pcb, esTx);
+	}	
 }
 
 //-----------------------------------------------------------------------------------------

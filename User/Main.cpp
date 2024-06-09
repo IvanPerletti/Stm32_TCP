@@ -55,6 +55,14 @@ void AutomatonsExecution(void);
 //  while(1);
 //}
 
+long getFwVersion(void);
+long monthBuild( const char * u8aDate);
+void MainAutoma_PID_Init(void);
+void MainAutoma_GEN_Init(void);
+void MainAutoma_CALYPSO_Init(void);
+
+void MainInizialization(void);
+
 //------------------------------------------------------------------------------
 #ifdef  USE_FULL_ASSERT
 void initAssertGpio(void)
