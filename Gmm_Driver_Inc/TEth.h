@@ -137,7 +137,10 @@ protected://####################################################################
 	struct tcp_pcb *client_pcb;
 	uint32_t TCPTimer;
 	uint32_t ARPTimer;
+<<<<<<< HEAD
 	u8_t dataTx[100];
+=======
+>>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 
 public://#####################################################################
 
@@ -158,7 +161,11 @@ public://#####################################################################
 
 	void poll(uint32_t localTime);
 
+<<<<<<< HEAD
 	void puts(const char *s);
+=======
+	void ETH_puts(const volatile char *s);
+>>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 
 	void cleanBuffer(volatile char *buffer, const unsigned short int numChar);
 

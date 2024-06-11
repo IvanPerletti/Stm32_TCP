@@ -135,6 +135,7 @@ void TAutomaEth_Test::stat_Read()
 			//timoutRX.start();
 		}
 	}
+	pEth->poll(tClock.watch());
 
 	//Always satisfied because pEth232 and pEth232_1 rxQ buffers has the same content
 	if(pEth_1->bytesAvailable())
@@ -162,6 +163,7 @@ void TAutomaEth_Test::stat_Transm()
 	//Transmit what we have read in previous state
 	if(bNeedToTransmit)
 	{
+<<<<<<< HEAD
 		if (pEth->isOpen()) {
 			//pEth->write(msgRx,nBytesAvail);
 			pEth->write("test", 4);
@@ -169,6 +171,11 @@ void TAutomaEth_Test::stat_Transm()
 		
 			setState(ST_READ);
 		}
+=======
+		//pEth->write(msgRx,nBytesAvail);
+		pEth->write("test", 4);
+		bNeedToTransmit = 0;
+>>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 	}
 	if(bNeedToTransmit_1)
 	{
