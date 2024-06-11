@@ -72,9 +72,11 @@ char TEthLAN8720::openInstance(long qID)
 			if (qOpened.indexOf(qID) < 0)
 			{
 				qOpened.push(qID);
-				close();
+				if (!isOpen() && qID==0)
+				{
 				open();
 			}
+		}
 		}
 	
 	return 0;
@@ -87,4 +89,30 @@ char TEthLAN8720::openInstance(long qID)
 char TEthLAN8720::isInstance_open(long qID)
 {
 	return (isOpen() && (qOpened.indexOf(qID) >= 0));
+}
+
+//-----------------------------------------------------------------------------
+/**
+ * @brief Read bytes received on serial port and trigger callback
+ * function for all subscriber
+ * (see TSerial232::registerRxCallback function)
+ */
+void TEthLAN8720::rxCallback(char payload)
+{
+	// copy payload for all users RX queue
+	for (int32_t ii = 0; ii < MAX_ETH_CALLBACKS; ii++)
+	{
+		if (callbacks[ii].instance != NULL && qOpened.has(ii))
+		{
+			trampoline(&payload, callbacks[ii]);
+		}
+	}
+}
+
+void ETHLAN8720_RxCallback(u8_t *payload, u16_t len)
+{
+	for (int32_t ii = 0; ii < len; ii++)
+	{
+		ethLAN8720.rxCallback(payload[ii]);
+	}
 }

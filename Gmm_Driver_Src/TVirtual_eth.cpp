@@ -30,7 +30,7 @@ void TVirtual_Eth::subscribe(void)
 	eth_InstID = TEthLAN8720::getInstance(pEthLAN8720);
 	if(pEthLAN8720)
 	{
-		pEthLAN8720->registerRxCallback(this, &TVirtual_Eth::EthRx);
+		pEthLAN8720->registerRxCallback(this, &TVirtual_Eth::rxCallback);
 	}
 }
 
@@ -155,7 +155,7 @@ int TVirtual_Eth::bytesToWrite(void)
  * single byte readed from physical serial port
  * @param payload 	byte readed
  */
-void TVirtual_Eth::EthRx(char *payload)
+void TVirtual_Eth::rxCallback(char *payload)
 {
 	rxQ.push(payload);
 }

@@ -39,8 +39,7 @@ public:
 	void write(void);
 	int bytesToWrite(void);
 	void resetBytesRX(void);
-	void EthRx(char *payload);
-	void EthTx(char *payload);
+	void rxCallback(char *payload);
 
 private:
 
@@ -49,7 +48,6 @@ private:
 	TEthLAN8720* pEthLAN8720;
 
 	IQ_Generic<char,RX_BYTE_NUM> rxQ;
-	IQ_Generic<char,TX_BYTE_NUM> txQ;
 };
 
 #endif /* GMM_DRIVER_INC_TCOM_ETH_H_ */

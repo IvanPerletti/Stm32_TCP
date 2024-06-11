@@ -48,8 +48,6 @@ TAutomaEth_Test::TAutomaEth_Test(void):
 //---------------------------------------------------------------------------
 void TAutomaEth_Test::executeSM()
 {
-	pEth->poll(tClock.watch());
-
 	switch(state)
 	{
 	case ST_RESET:
@@ -80,8 +78,8 @@ void TAutomaEth_Test::stat_Init()
 		bInit=false;
 	}
 
-	bool err;
-	bool err_1;
+	bool err = false;
+	bool err_1 = false;
 
 	if (pEth != NULL)
 	{
@@ -104,26 +102,22 @@ void TAutomaEth_Test::stat_Init()
 		err = pEth->open();
 	}
 
-//	if (pEth_1 != NULL)
-//	{
-//		if (pEth_1->isOpen())
-//		{
-//			pEth_1->close();
-//		}
-//		
-//		err_1 = pEth_1->open();
-//	}
+	if (pEth_1 != NULL)
+	{
+		err_1 = pEth_1->open();
+	}
 
 	if (!err && !err_1)
 	{
-		//setState(ST_READ);
-			bNeedToTransmit = 1;
-		setState(ST_TRANSM);
+		setState(ST_READ);
+			//bNeedToTransmit = 1;
+		  //setState(ST_TRANSM);
 	}
 }
 //---------------------------------------------------------------------------
 void TAutomaEth_Test::stat_Read()
 {
+	pEth->poll(tClock.watch());
 
 	if( pEth->bytesAvailable())
 	{
@@ -135,7 +129,6 @@ void TAutomaEth_Test::stat_Read()
 			//timoutRX.start();
 		}
 	}
-	pEth->poll(tClock.watch());
 
 	//Always satisfied because pEth232 and pEth232_1 rxQ buffers has the same content
 	if(pEth_1->bytesAvailable())
@@ -148,7 +141,7 @@ void TAutomaEth_Test::stat_Read()
 		}
 	}
 
-	//setState(ST_TRANSM);
+	setState(ST_TRANSM);
 
 	//	if(timoutRX.exceed(5000)) //
 	//	{
@@ -160,22 +153,16 @@ void TAutomaEth_Test::stat_Read()
 //---------------------------------------------------------------------------
 void TAutomaEth_Test::stat_Transm()
 {
+	pEth->poll(tClock.watch());
+
 	//Transmit what we have read in previous state
 	if(bNeedToTransmit)
 	{
-<<<<<<< HEAD
 		if (pEth->isOpen()) {
-			//pEth->write(msgRx,nBytesAvail);
-			pEth->write("test", 4);
+			pEth->write(msgRx, nBytesAvail);
+			//pEth->write("test", 4);
 			bNeedToTransmit = 0;
-		
-			setState(ST_READ);
 		}
-=======
-		//pEth->write(msgRx,nBytesAvail);
-		pEth->write("test", 4);
-		bNeedToTransmit = 0;
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 	}
 	if(bNeedToTransmit_1)
 	{
@@ -183,6 +170,7 @@ void TAutomaEth_Test::stat_Transm()
 		bNeedToTransmit_1 = 0;
 	}
 
+	setState(ST_READ);
 }
 
 //---------------------------------------------------------------------------

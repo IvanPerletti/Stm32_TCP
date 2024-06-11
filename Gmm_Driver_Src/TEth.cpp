@@ -30,6 +30,8 @@ extern "C"{
 	#include "ethernetif.h"
 }
 
+extern void ETHLAN8720_RxCallback(u8_t *payload, u16_t len);
+
 //----Private Struct-----------------------------------------------------------
 
 ETH_InitTypeDef TEth::ETH_InitStructure;
@@ -53,10 +55,7 @@ extern "C" {
 }
 
 err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
-<<<<<<< HEAD
 void tcp_client_err(void *arg, err_t err);
-=======
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 void tcp_client_connection_close(struct tcp_pcb *tpcb, struct client * es);
 err_t tcp_client_poll(void *arg, struct tcp_pcb *tpcb);
 err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
@@ -160,7 +159,6 @@ void tcp_client_handle (struct tcp_pcb *tpcb, struct client *es)
 	TEth::pcbTx = tpcb;
 }
 
-<<<<<<< HEAD
 void tcp_client_err(void *arg, err_t err)
 {
   struct client *es;
@@ -174,8 +172,6 @@ void tcp_client_err(void *arg, err_t err)
 	}
 }
 
-=======
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 /**
   * @brief tcp_receiv callback
   * @param arg: argument to be passed to receive callback 
@@ -223,10 +219,19 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     ret_err = err;
   }
   else if(es->state == ES_CONNECTED)
-  {       
+  {
     /* Acknowledge data reception */
     tcp_recved(tpcb, p->tot_len);  
 
+		if (p->tot_len) {
+			struct pbuf *pBuf = p;
+		
+			do {
+				ETHLAN8720_RxCallback((u8_t *)pBuf->payload, pBuf->len);
+				pBuf = pBuf->next;
+			} while (pBuf != NULL);
+		}
+		
     /* handle the received data */
     tcp_client_handle(tpcb, es);
     
@@ -241,6 +246,15 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     /* Acknowledge data reception */
     tcp_recved(tpcb, p->tot_len);
     
+		if (p->tot_len) {
+			struct pbuf *pBuf = p;
+		
+			do {
+				ETHLAN8720_RxCallback((u8_t *)pBuf->payload, pBuf->len);
+				pBuf = pBuf->next;
+			} while (pBuf != NULL);
+		}
+		
     /* free pbuf and do nothing */
     pbuf_free(p);
     ret_err = ERR_OK;
@@ -380,11 +394,8 @@ void tcp_client_connection_close(struct tcp_pcb *tpcb, struct client * es )
   tcp_sent(tpcb, NULL);
   tcp_poll(tpcb, NULL,0);
 
-<<<<<<< HEAD
 	tcp_client_handle(NULL, NULL);
 	
-=======
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
   if (es != NULL)
   {
     mem_free(es);
@@ -420,8 +431,6 @@ err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
 			/* pass newly allocated es structure as argument to tpcb */
 			tcp_arg(tpcb, es);
 
-<<<<<<< HEAD
-=======
 			/* initialize LwIP tcp_recv callback function */ 
 			tcp_recv(tpcb, tcp_client_recv);
 
@@ -431,7 +440,9 @@ err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
 			/* initialize LwIP tcp_poll callback function */
 			tcp_poll(tpcb, tcp_client_poll, 1);    
 
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
+			/* initialize LwIP tcp_err callback function */
+			tcp_err(tpcb, tcp_client_err);
+			
 	    /* handle the TCP data */
 	    tcp_client_handle(tpcb, es);
 			
@@ -701,9 +712,9 @@ unsigned char TEth::NVIC_StructConfig(void)
 			- &=0x08 - ETH_Struct Configuration error
 			- &=0x10 - Nested VEctor Interrupt Routine error
  */
-unsigned char TEth::setup_HW(void)
+char TEth::setup_HW(void)
 {
-	unsigned char error = 0x00;
+	char error = 0x00;
 
   /* Reset ETHERNET on AHB Bus */
   ETH_DeInit();
@@ -723,9 +734,9 @@ unsigned char TEth::setup_HW(void)
  * @pre USE TEth::setupCOM() before calling open() function: otherwise default setup is loaded
  * @remark  do not use other ASSERT for USART_InitStructure: parameters can be 0x00
  */
-char TEth::open(void)
+int TEth::open(void)
 {
-	char error = 0;
+	int error = 0;
 
 	error = setup_HW();
 
@@ -773,30 +784,9 @@ char TEth::open(void)
 		/* create new tcp pcb */
 		client_pcb = tcp_new();
 		
-<<<<<<< HEAD
-		if (client_pcb != NULL) {
-			/* connect to destination address/port */
-			error = tcp_connect(client_pcb, &ip_server , DEST_PORT, tcp_client_connected);
-			
-			if (error == ERR_OK) {
-				/* initialize LwIP tcp_recv callback function */ 
-				tcp_recv(client_pcb, tcp_client_recv);
-
-				/* initialize LwIP tcp_sent callback function */
-				tcp_sent(client_pcb, tcp_client_sent);
-
-				/* initialize LwIP tcp_poll callback function */
-				tcp_poll(client_pcb, tcp_client_poll, 1);    
-
-				/* initialize LwIP tcp_err callback function */
-				tcp_err(client_pcb, tcp_client_err);
-			}
-		}
-=======
 		if (client_pcb != NULL)
 			/* connect to destination address/port */
 			error = tcp_connect(client_pcb, &ip_server , DEST_PORT, tcp_client_connected);
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 		else
 			error = ERR_MEM;
 	}
@@ -814,7 +804,7 @@ char TEth::isOpen (void)
 {
 	if (esTx)
 		return (esTx->state == ES_CONNECTED);
-	return (0x0);
+	return(0x00);
 }
 //-----------------------------------------------------------------------------------------
 /**
@@ -827,6 +817,26 @@ void TEth::close (void)
 
 void TEth::poll(uint32_t localTime)
 {
+
+	static uint8_t status = 0;
+	uint32_t t = (ETH_ReadPHYRegister(ETH_PHY_ADDRESS, PHY_BSR) & 0x4);
+	
+	/* If we have link and previous check was not yet */
+	if (t && !status) {
+		/* Set link up */
+		netif_set_link_up(&gnetif);
+		
+		status = 1;
+	}	
+	/* If we don't have link and it was on previous check */
+	if (!t && status) {
+		EthLinkStatus = 1;
+		/* Set link down */
+		netif_set_link_down(&gnetif);
+			
+		status = 0;
+	}
+	
 	/* check if any packet received */
 	if (ETH_CheckFrameReceived())
 	{ 
@@ -866,30 +876,16 @@ void TEth::poll(uint32_t localTime)
  * */
 void TEth::puts(const char *s)
 {
-<<<<<<< HEAD
 	strncpy((char*)dataTx, (const char *)s, strlen(s));
 	dataTx[sizeof(dataTx) - 1] = '\0';
 
 	/* allocate pbuf */
 	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, strlen((char*)dataTx) , PBUF_POOL);
-=======
-	u8_t data[100];
-	
-	strncpy((char*)data, (const char *)s, sizeof(data) - 1);
-	data[sizeof(data) - 1] = '\0';
-
-	/* allocate pbuf */
-	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, strlen((char*)data) , PBUF_POOL);
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
  
 	if (esTx->p_tx)
 	{       
 		/* copy data to pbuf */
-<<<<<<< HEAD
 		pbuf_take(esTx->p_tx, (char*)dataTx, strlen((char*)dataTx));
-=======
-		pbuf_take(esTx->p_tx, (char*)data, strlen((char*)data));
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 
 		/* send data */
 		tcp_client_send(esTx->pcb, esTx);
@@ -1001,15 +997,7 @@ int TEth::bytesToWrite(void)
  */
 unsigned char TEth::write(const char *msg, unsigned short int charNum2Send)
 {
-<<<<<<< HEAD
-	strncpy((char*)dataTx, (const char *)msg, charNum2Send);
-	dataTx[sizeof(dataTx) - 1] = '\0';
-=======
-	u8_t data[100];
-	
-	strncpy((char*)data, (const char *)msg, charNum2Send);
-	data[sizeof(data) - 1] = '\0';
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
+	memcpy((void *)dataTx, (void *)msg, charNum2Send);
 
 	/* allocate pbuf */
 	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, charNum2Send , PBUF_POOL);
@@ -1017,11 +1005,7 @@ unsigned char TEth::write(const char *msg, unsigned short int charNum2Send)
 	if (esTx->p_tx)
 	{       
 		/* copy data to pbuf */
-<<<<<<< HEAD
-		pbuf_take(esTx->p_tx, (char*)dataTx, strlen((char*)dataTx));
-=======
-		pbuf_take(esTx->p_tx, (char*)data, strlen((char*)data));
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
+		pbuf_take(esTx->p_tx, (char*)dataTx, charNum2Send);
 
 		/* send data */
 		tcp_client_send(esTx->pcb, esTx);

@@ -37,6 +37,8 @@ public:
 	void closeAllUsers(void);
 	char openInstance(long qID);
 	char isInstance_open(long qID);
+
+	void rxCallback(char payload);
 };
 
 // Singleton EthLAN8720
