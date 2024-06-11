@@ -53,10 +53,7 @@ extern "C" {
 }
 
 err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
-<<<<<<< HEAD
 void tcp_client_err(void *arg, err_t err);
-=======
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 void tcp_client_connection_close(struct tcp_pcb *tpcb, struct client * es);
 err_t tcp_client_poll(void *arg, struct tcp_pcb *tpcb);
 err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
@@ -160,7 +157,6 @@ void tcp_client_handle (struct tcp_pcb *tpcb, struct client *es)
 	TEth::pcbTx = tpcb;
 }
 
-<<<<<<< HEAD
 void tcp_client_err(void *arg, err_t err)
 {
   struct client *es;
@@ -174,8 +170,6 @@ void tcp_client_err(void *arg, err_t err)
 	}
 }
 
-=======
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 /**
   * @brief tcp_receiv callback
   * @param arg: argument to be passed to receive callback 
@@ -380,11 +374,8 @@ void tcp_client_connection_close(struct tcp_pcb *tpcb, struct client * es )
   tcp_sent(tpcb, NULL);
   tcp_poll(tpcb, NULL,0);
 
-<<<<<<< HEAD
 	tcp_client_handle(NULL, NULL);
 	
-=======
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
   if (es != NULL)
   {
     mem_free(es);
@@ -420,18 +411,6 @@ err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
 			/* pass newly allocated es structure as argument to tpcb */
 			tcp_arg(tpcb, es);
 
-<<<<<<< HEAD
-=======
-			/* initialize LwIP tcp_recv callback function */ 
-			tcp_recv(tpcb, tcp_client_recv);
-
-			/* initialize LwIP tcp_sent callback function */
-			tcp_sent(tpcb, tcp_client_sent);
-
-			/* initialize LwIP tcp_poll callback function */
-			tcp_poll(tpcb, tcp_client_poll, 1);    
-
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 	    /* handle the TCP data */
 	    tcp_client_handle(tpcb, es);
 			
@@ -773,7 +752,6 @@ char TEth::open(void)
 		/* create new tcp pcb */
 		client_pcb = tcp_new();
 		
-<<<<<<< HEAD
 		if (client_pcb != NULL) {
 			/* connect to destination address/port */
 			error = tcp_connect(client_pcb, &ip_server , DEST_PORT, tcp_client_connected);
@@ -792,11 +770,6 @@ char TEth::open(void)
 				tcp_err(client_pcb, tcp_client_err);
 			}
 		}
-=======
-		if (client_pcb != NULL)
-			/* connect to destination address/port */
-			error = tcp_connect(client_pcb, &ip_server , DEST_PORT, tcp_client_connected);
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 		else
 			error = ERR_MEM;
 	}
@@ -866,30 +839,16 @@ void TEth::poll(uint32_t localTime)
  * */
 void TEth::puts(const char *s)
 {
-<<<<<<< HEAD
 	strncpy((char*)dataTx, (const char *)s, strlen(s));
 	dataTx[sizeof(dataTx) - 1] = '\0';
 
 	/* allocate pbuf */
 	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, strlen((char*)dataTx) , PBUF_POOL);
-=======
-	u8_t data[100];
-	
-	strncpy((char*)data, (const char *)s, sizeof(data) - 1);
-	data[sizeof(data) - 1] = '\0';
-
-	/* allocate pbuf */
-	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, strlen((char*)data) , PBUF_POOL);
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
  
 	if (esTx->p_tx)
 	{       
 		/* copy data to pbuf */
-<<<<<<< HEAD
 		pbuf_take(esTx->p_tx, (char*)dataTx, strlen((char*)dataTx));
-=======
-		pbuf_take(esTx->p_tx, (char*)data, strlen((char*)data));
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 
 		/* send data */
 		tcp_client_send(esTx->pcb, esTx);
@@ -1001,15 +960,8 @@ int TEth::bytesToWrite(void)
  */
 unsigned char TEth::write(const char *msg, unsigned short int charNum2Send)
 {
-<<<<<<< HEAD
 	strncpy((char*)dataTx, (const char *)msg, charNum2Send);
 	dataTx[sizeof(dataTx) - 1] = '\0';
-=======
-	u8_t data[100];
-	
-	strncpy((char*)data, (const char *)msg, charNum2Send);
-	data[sizeof(data) - 1] = '\0';
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 
 	/* allocate pbuf */
 	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, charNum2Send , PBUF_POOL);
@@ -1017,11 +969,7 @@ unsigned char TEth::write(const char *msg, unsigned short int charNum2Send)
 	if (esTx->p_tx)
 	{       
 		/* copy data to pbuf */
-<<<<<<< HEAD
 		pbuf_take(esTx->p_tx, (char*)dataTx, strlen((char*)dataTx));
-=======
-		pbuf_take(esTx->p_tx, (char*)data, strlen((char*)data));
->>>>>>> ea15693cf22a041b6b3e33cfc334eba75aeabe42
 
 		/* send data */
 		tcp_client_send(esTx->pcb, esTx);
