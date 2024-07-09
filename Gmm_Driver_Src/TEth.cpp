@@ -39,13 +39,15 @@ __IO uint32_t TEth::EthStatus;
 __IO uint8_t TEth::EthLinkStatus;
 
 struct netif TEth::gnetif;
-ip_addr_t TEth::ip_local;
+ip_addr_t TEth::local_ip;
 ip_addr_t TEth::netmask;
 ip_addr_t TEth::gateway;
-ip_addr_t TEth::ip_server;
+ip_addr_t TEth::server_ip;
+int TEth::server_port;
 
 struct client *TEth::esTx;
 struct tcp_pcb *TEth::pcbTx;
+u16_t TEth::nBytesToTx;
 
 extern "C" {
 	void Delay(int ms)
@@ -96,7 +98,8 @@ void ETH_link_callback(struct netif *netif)
 			RegValue = (RegValue >> 2) & 0x07;
 
 			/* Switch statement */
-			switch (RegValue) {
+			switch (RegValue) 
+			{
 				case 1: /* Base 10, half-duplex */
 					TEth::ETH_InitStructure.ETH_Speed = ETH_Speed_10M;
 					TEth::ETH_InitStructure.ETH_Mode = ETH_Mode_HalfDuplex;
@@ -136,7 +139,7 @@ void ETH_link_callback(struct netif *netif)
     /* Restart MAC interface */
     ETH_Start();
 
-    netif_set_addr(&TEth::gnetif, &TEth::ip_local , &TEth::netmask, &TEth::gateway);
+    netif_set_addr(&TEth::gnetif, &TEth::local_ip , &TEth::netmask, &TEth::gateway);
     
     /* When the netif is fully configured this function must be called.*/
     netif_set_up(&TEth::gnetif);    
@@ -246,10 +249,12 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     /* Acknowledge data reception */
     tcp_recved(tpcb, p->tot_len);
     
-		if (p->tot_len) {
+		if (p->tot_len) 
+		{
 			struct pbuf *pBuf = p;
 		
-			do {
+			do 
+			{
 				ETHLAN8720_RxCallback((u8_t *)pBuf->payload, pBuf->len);
 				pBuf = pBuf->next;
 			} while (pBuf != NULL);
@@ -368,11 +373,15 @@ err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len)
   
   if(es->p_tx != NULL)
   {
+		TEth::nBytesToTx -= len;
+		
     /* still got pbufs to send */
     tcp_client_send(tpcb, es);
   }
   else
   {
+		TEth::nBytesToTx = 0;
+		
     /* if no more data to send and client closed connection*/
     if(es->state == ES_CLOSING)
     	tcp_client_connection_close(tpcb, es);
@@ -471,11 +480,7 @@ err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
  * @brief Class constructor: declare and *basic* initialization of the USART
  * @param num		number of the port to initialize. See usartSetup struct for details
  */
-TEth::TEth():
-		rx_head(0),
-		rx_tail(0),
-		tx_head(0),
-		tx_tail(0)
+TEth::TEth()
 {
 	cleanAllLocalVariables();
 }
@@ -483,7 +488,8 @@ TEth::TEth():
 /**
  * @brief Class Destructor: reset *basic* initialization of the class
  */
-TEth::~TEth() {
+TEth::~TEth() 
+{
 	cleanAllLocalVariables();
 }
 //-----------------------------------------------------------------------------------------
@@ -504,13 +510,7 @@ TEth::~TEth() {
  */
 void  TEth::cleanAllLocalVariables(void)
 {
-	rx_tail=0;
-	rx_head=0;
-	tx_tail=0;
-	tx_head=0;
-	cleanBuffer(bCircArrRx,RXBUFFERSIZE);
-	cleanBuffer(bCircArrTx,RXBUFFERSIZE);
-	
+	nBytesToTx = 0;
 	tcp_client_handle(NULL, NULL);
 }
 //-----------------------------------------------------------------------------------------
@@ -712,9 +712,9 @@ unsigned char TEth::NVIC_StructConfig(void)
 			- &=0x08 - ETH_Struct Configuration error
 			- &=0x10 - Nested VEctor Interrupt Routine error
  */
-char TEth::setup_HW(void)
+unsigned char TEth::setup_HW(void)
 {
-	char error = 0x00;
+	unsigned char error = 0x00;
 
   /* Reset ETHERNET on AHB Bus */
   ETH_DeInit();
@@ -740,7 +740,8 @@ int TEth::open(void)
 
 	error = setup_HW();
 
-	if (error == 0) {
+	if (error == 0) 
+	{
 		/* Initializes the dynamic memory heap defined by MEM_SIZE.*/
 		mem_init();
 
@@ -759,7 +760,7 @@ int TEth::open(void)
 
 		The init function pointer must point to a initialization function for
 		your ethernet netif interface. The following code illustrates it's use.*/
-		netif_add(&gnetif, &ip_local, &netmask, &gateway, NULL, &ethernetif_init, &ethernet_input);
+		netif_add(&gnetif, &local_ip, &netmask, &gateway, NULL, &ethernetif_init, &ethernet_input);
 
 		/*  Registers the default network interface.*/
 		netif_set_default(&gnetif);
@@ -786,7 +787,7 @@ int TEth::open(void)
 		
 		if (client_pcb != NULL)
 			/* connect to destination address/port */
-			error = tcp_connect(client_pcb, &ip_server , DEST_PORT, tcp_client_connected);
+			error = tcp_connect(client_pcb, &server_ip , server_port, tcp_client_connected);
 		else
 			error = ERR_MEM;
 	}
@@ -800,7 +801,7 @@ int TEth::open(void)
  				- 0x00 if port is closed
   				- 0x01 if port is open
  */
-char TEth::isOpen (void)
+char TEth::isConnected (void)
 {
 	if (esTx)
 		return (esTx->state == ES_CONNECTED);
@@ -812,7 +813,8 @@ char TEth::isOpen (void)
  */
 void TEth::close (void)
 {
-
+	if (isConnected())
+		tcp_client_connection_close(pcbTx, esTx);
 }
 
 void TEth::poll(uint32_t localTime)
@@ -822,14 +824,16 @@ void TEth::poll(uint32_t localTime)
 	uint32_t t = (ETH_ReadPHYRegister(ETH_PHY_ADDRESS, PHY_BSR) & 0x4);
 	
 	/* If we have link and previous check was not yet */
-	if (t && !status) {
+	if (t && !status) 
+	{
 		/* Set link up */
 		netif_set_link_up(&gnetif);
 		
 		status = 1;
 	}	
 	/* If we don't have link and it was on previous check */
-	if (!t && status) {
+	if (!t && status) 
+	{
 		EthLinkStatus = 1;
 		/* Set link down */
 		netif_set_link_down(&gnetif);
@@ -863,128 +867,12 @@ void TEth::poll(uint32_t localTime)
 
 //-----------------------------------------------------------------------------------------
 /**
- * @brief Transmit a string of characters via the USART specified in stpIndex.
- * @param stpIndex	Can be any of the USART# ( USART1, USART2 etc. )
- * @param *s		is the string you want to send
- *
- * @note The string has to be passed to the function as a pointer because
- *		the compiler doesn't know the 'string' data type. In standard
- *		C a string is just an array of characters
- *
- * @note At the moment it takes a volatile char because the received_string variable
- * declared as volatile char --> otherwise the compiler will spit out warnings
- * */
-void TEth::puts(const char *s)
-{
-	strncpy((char*)dataTx, (const char *)s, strlen(s));
-	dataTx[sizeof(dataTx) - 1] = '\0';
-
-	/* allocate pbuf */
-	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, strlen((char*)dataTx) , PBUF_POOL);
- 
-	if (esTx->p_tx)
-	{       
-		/* copy data to pbuf */
-		pbuf_take(esTx->p_tx, (char*)dataTx, strlen((char*)dataTx));
-
-		/* send data */
-		tcp_client_send(esTx->pcb, esTx);
-	}	
-}
-
-//-----------------------------------------------------------------------------------------
-/**
- * @brief Wipe the input buffer data replacing the first numChar elements with
- *  "-" character. No way to know the real dimension of the buffer: you risk to
- *  modify the memory next to the buffer if numChar is greater than the real
- *  buffer dimension
- * @param *buffer 		ptr to the array to wipe
- * @param numChar		num of char to replace [use sizeof(buffer) / sizeof(char]]
- */
-void TEth::cleanBuffer(volatile char *buffer, const unsigned short int numChar)
-{
-	unsigned int bb;
-	for(bb=0; bb<numChar; bb++)
-		buffer[bb]='-';
-}
-//-----------------------------------------------------------------------------------------
-/**
- * @brief Wipe the private bCircArrRx data replacing elements with "*" char
- */
-void TEth::cleanBuffer(void)
-{
-	unsigned int bb;
-	//	USART_ITConfig(USARTPORT, USART_IT_TXE, DISABLE);
-	for(bb=0; bb<RXBUFFERSIZE; bb++){
-		bCircArrRx[bb]='(';
-		bCircArrTx[bb]='(';
-	}
-	tx_tail=0;
-	tx_head=0;
-	rx_tail=0;
-	rx_head=0;
-	//	USART_ITConfig(USARTPORT, USART_IT_TXE, ENABLE);
-}
-//-----------------------------------------------------------------------------------------
-/**
- * @brief Read eventual Usart new message: new message is the right circular
- * sub-buffer between rx_head and rx_tail head ptrs
- * @param msgRx		buffer into which copy new received data read from circular buffer
- * @retval number of read char
- * - if > 0 is the number of char,
- * - (-1) error, RX Cable seems unplugged
- * @note While reading interrupt is allowed to modify RX_CircBuff
- * warranty for no critical in this time
- * @note Avoided to pause RX interrupt for incomplete message coming
- */
-int TEth::read(volatile char *msgRx)
-{
-	int qq=0;
-
-//#ifdef _USB_DEBUG_
-//	tDbg.write((char*)"READ rx_head ");
-//	tDbg.write((char*)"%d  ", rx_head);
-//	tDbg.write((char*)"READ rx_tail ");
-//	tDbg.write((char*)"%d  ", rx_tail);
-//#endif
-
-	if(rx_head!=rx_tail)
-	{ //  new data to read on USART
-		while( rx_head!=rx_tail)
-		{
-			msgRx[qq]=bCircArrRx[rx_head];// if interrupt happens here NO PROBLEM
-			rx_head++;// if interrupt happens here will be %RXBUFFERSIZE
-			rx_head%=RXBUFFERSIZE;
-			qq++;
-			qq%=RXBUFFERSIZE;
-		}
-	}
-	return(qq);//number of char it reads
-}
-
-//-----------------------------------------------------------------------------------------
-/**
- * @brief Check if there is anything to read from Receiving buffer
- * @return the number of character to be read
- */
-int TEth::bytesAvailable(void)
-{
-	int notAlreadyReadChar = rx_tail - rx_head;
-	if(notAlreadyReadChar<0)
-		notAlreadyReadChar+=RXBUFFERSIZE;
-	return(notAlreadyReadChar);
-}
-//-----------------------------------------------------------------------------------------
-/**
  * @brief Check if there is anything to be transmitted on the serial port
  * @return number of characters to be read
  */
 int TEth::bytesToWrite(void)
 {
-	int notAlreadyWrittenChar = tx_tail - tx_head;
-	if(notAlreadyWrittenChar<0)
-		notAlreadyWrittenChar+=RXBUFFERSIZE;
-	return(notAlreadyWrittenChar);
+	return nBytesToTx;
 }
 //-----------------------------------------------------------------------------------------
 /**
@@ -997,41 +885,32 @@ int TEth::bytesToWrite(void)
  */
 unsigned char TEth::write(const char *msg, unsigned short int charNum2Send)
 {
-	memcpy((void *)dataTx, (void *)msg, charNum2Send);
-
-	/* allocate pbuf */
-	esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, charNum2Send , PBUF_POOL);
- 
-	if (esTx->p_tx)
-	{       
-		/* copy data to pbuf */
-		pbuf_take(esTx->p_tx, (char*)dataTx, charNum2Send);
-
-		/* send data */
-		tcp_client_send(esTx->pcb, esTx);
-	}	
-}
-
-//-----------------------------------------------------------------------------------------
-/**
- * @brief append a msg onto circual array. Instead of TEth::write() this
- * function does not ENABLE Interrupt USART_IT_TXE
- * @param msg	ptr to the message array you want to transmit
- * @param charNum2Send	ptr to the number of char to effectively transmit
- * @return error
-				- |=0x01 - message completely sent
-				- &=0x01 - Port Not correctly initialized
-				- &=0x02 - Too much character to send: stay < RXBUFFERSIZE
- */
-unsigned char TEth::append(const char *msg,
-		unsigned short int charNum2Send)
-{
-	unsigned short int  qq=0;
-	int delta;
-
-	if (charNum2Send<=RXBUFFERSIZE)
+	unsigned char error = 0x0;
+	
+	if (isConnected())
 	{
-	}
-	return (0x02);// Too much character to send: stay < RXBUFFERSIZE
-}
+		if (charNum2Send <= sizeof(bArrTx))
+		{
+			memcpy((void *)bArrTx, (void *)msg, charNum2Send);
+			nBytesToTx = charNum2Send;
+			
+			/* allocate pbuf */
+			esTx->p_tx = pbuf_alloc(PBUF_TRANSPORT, charNum2Send , PBUF_POOL);
+		 
+			if (esTx->p_tx)
+			{       
+				/* copy data to pbuf */
+				pbuf_take(esTx->p_tx, (char*)bArrTx, charNum2Send);
 
+				/* send data */
+				tcp_client_send(esTx->pcb, esTx);
+			}	
+		} 
+		else
+			error |= 0x02;
+	}	
+	else
+		error |= 0x01;
+
+	return error;
+}

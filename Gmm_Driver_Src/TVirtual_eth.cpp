@@ -34,11 +34,11 @@ void TVirtual_Eth::subscribe(void)
 	}
 }
 
-void TVirtual_Eth::setupEth(ip_addr_t ip_local, ip_addr_t mask, ip_addr_t gw, ip_addr_t ip_server)
+void TVirtual_Eth::setupEth(ip_addr_t local_ip, ip_addr_t mask, ip_addr_t gw, ip_addr_t server_ip, int server_port)
 {
 	if(pEthLAN8720)
 	{
-		pEthLAN8720->setupEth(ip_local, mask, gw, ip_server);
+		pEthLAN8720->setupEth(local_ip, mask, gw, server_ip, server_port);
 	}
 }
 
@@ -48,14 +48,20 @@ void TVirtual_Eth::setupEth(ip_addr_t ip_local, ip_addr_t mask, ip_addr_t gw, ip
  */
 void TVirtual_Eth::close(void)
 {
-	pEthLAN8720->closeInstance(eth_InstID);
+	if(pEthLAN8720)
+	{
+		pEthLAN8720->closeInstance(eth_InstID);
+	}
 }
 
 //------------------------------------------------------------------------------
 
 void TVirtual_Eth::closeAllUsers(void)
 {
-	pEthLAN8720->closeAllUsers();
+	if(pEthLAN8720)
+	{
+		pEthLAN8720->closeAllUsers();
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -65,7 +71,11 @@ void TVirtual_Eth::closeAllUsers(void)
  */
 char TVirtual_Eth::open(void)
 {
-	return pEthLAN8720->openInstance(eth_InstID);
+	if(pEthLAN8720)
+	{
+		return pEthLAN8720->openInstance(eth_InstID);
+	}
+	return 0;
 }
 
 //------------------------------------------------------------------------------
@@ -74,12 +84,19 @@ char TVirtual_Eth::open(void)
  */
 bool TVirtual_Eth::isOpen(void)
 {
-	return pEthLAN8720->isInstance_open(eth_InstID);
+	if(pEthLAN8720)
+	{
+		return pEthLAN8720->isInstance_open(eth_InstID);
+	}
+	return false;
 }
 
 void TVirtual_Eth::poll(uint32_t localTime)
 {
-	pEthLAN8720->poll(localTime);
+	if(pEthLAN8720)
+	{
+		pEthLAN8720->poll(localTime);
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -91,6 +108,7 @@ int TVirtual_Eth::read(char *rxByte)
 {
 	int qq=0;
 	char cOneByte = 0x00;
+
 	if(isToRead())
 	{ //  new data to read on USART
 		while( isToRead())
@@ -99,18 +117,10 @@ int TVirtual_Eth::read(char *rxByte)
 //			tDbg.write("in virtual ser: %d\r\n", cOneByte);
 
 			rxByte[qq] = cOneByte;
-//			rx_head++;// if interrupt happens here will be %RXBUFFERSIZE
-//			rx_head%=RXBUFFERSIZE;
 			qq++;
-//			qq%=RXBUFFERSIZE;
 		}
 	}
 	return(qq);//number of char it reads
-//
-//	int is_read = 0;
-//	is_read = rxQ.pop(rxByte);
-//
-//	return is_read;
 }
 //------------------------------------------------------------------------------
 /**
@@ -134,19 +144,22 @@ int TVirtual_Eth::bytesAvailable(void)
 //------------------------------------------------------------------------------
 unsigned char TVirtual_Eth::write(const char *msg, unsigned short int charNum2Send)
 {
-	pEthLAN8720->write(msg, charNum2Send);
-	
+	if(pEthLAN8720)
+	{	
+		return pEthLAN8720->write(msg, charNum2Send);
+	}
 	return 0x0;
 }
-//------------------------------------------------------------------------------
-void TVirtual_Eth::write(void)
-{
-}
+
 //------------------------------------------------------------------------------
 
 int TVirtual_Eth::bytesToWrite(void)
 {
-	return pEthLAN8720->bytesToWrite();
+	if(pEthLAN8720)
+	{
+		return pEthLAN8720->bytesToWrite();
+	}
+	return 0;
 }
 
 //------------------------------------------------------------------------------
