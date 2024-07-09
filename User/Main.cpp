@@ -190,7 +190,7 @@ int main (void)
 		{
 
 			automaSerial.executeSM();
-			automaEth.executeSM();
+			//automaEth.executeSM();
 			timer_SerAutoma.start();
 		}
 	}

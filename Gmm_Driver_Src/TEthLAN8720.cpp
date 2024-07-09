@@ -56,11 +56,11 @@ void TEthLAN8720::closeInstance(long qID)
 /**
  * @brief Reset the queue of all the opened users
  */
-
 void TEthLAN8720::closeAllUsers(void)
 {
 	qOpened.reset();
 }
+
 //------------------------------------------------------------------------------
 /**@brief Open specific instance
  * @param qID	instance identifier
@@ -72,11 +72,11 @@ char TEthLAN8720::openInstance(long qID)
 			if (qOpened.indexOf(qID) < 0)
 			{
 				qOpened.push(qID);
-				if (!isOpen() && qID==0)
+				if (!isConnected() && qID==0)
 				{
-				open();
+					open();
+				}
 			}
-		}
 		}
 	
 	return 0;
@@ -88,7 +88,7 @@ char TEthLAN8720::openInstance(long qID)
  */
 char TEthLAN8720::isInstance_open(long qID)
 {
-	return (isOpen() && (qOpened.indexOf(qID) >= 0));
+	return (isConnected() && (qOpened.indexOf(qID) >= 0));
 }
 
 //-----------------------------------------------------------------------------

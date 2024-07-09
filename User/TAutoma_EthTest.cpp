@@ -26,7 +26,7 @@
 #define SERVER_IP_ADDR2   1
 #define SERVER_IP_ADDR3   105
 
-#define DEST_PORT       7
+#define SERVER_PORT       2020
 
 TAutomaEth_Test automaEth;
 
@@ -97,7 +97,7 @@ void TAutomaEth_Test::stat_Init()
 		IP4_ADDR(&netmask, NETMASK_ADDR0, NETMASK_ADDR1 , NETMASK_ADDR2, NETMASK_ADDR3);
 		IP4_ADDR(&gw, GW_ADDR0, GW_ADDR1, GW_ADDR2, GW_ADDR3);
 		IP4_ADDR(&ip_server, SERVER_IP_ADDR0, SERVER_IP_ADDR1, SERVER_IP_ADDR2, SERVER_IP_ADDR3);
-		pEth->setupEth(ip_local, netmask, gw, ip_server);
+		pEth->setupEth(ip_local, netmask, gw, ip_server, SERVER_PORT);
 		
 		err = pEth->open();
 	}
@@ -125,6 +125,12 @@ void TAutomaEth_Test::stat_Read()
 
 		if(nBytesAvail)
 		{
+			if (msgRx[0] == 'q')
+			{
+				pEth->close();
+				pEth_1->close();
+			}
+			else
 			bNeedToTransmit = 1;
 			//timoutRX.start();
 		}

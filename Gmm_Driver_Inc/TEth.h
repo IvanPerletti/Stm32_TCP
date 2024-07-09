@@ -29,11 +29,7 @@
 #include "netif/etharp.h"
 
 /* Private define ------------------------------------------------------------*/
-#define RXBUFFERSIZE 128 // CHOOSE A POWER OF TWO NUMBER (speed for modulus)
 #define MAX_ETH_CALLBACKS 10
-#if RXBUFFERSIZE & (RXBUFFERSIZE-1) != 0
-#define RXBUFFERSIZE 128 // CHOOSE A POWER OF TWO NUMBER (optimized modulus function)
-#endif
 
 
 //----Private Struct-----------------------------------------------------------
@@ -97,76 +93,60 @@ public:
 	EthCallbackData callbacks[MAX_ETH_CALLBACKS];
 
 protected:
-	int rx_head; /*!< 1st  Not-Already *READ* char ptr in RxCircBuuffer*/
-	int rx_tail; /*!< Last Not-Already *READ* char ptr in RxCircBuuffer*/
-
-	int tx_head; /*!< 1st  Not-Already *SENT* char ptr in TxCircBuuffer*/
-	int tx_tail; /*!< Last Not-Already *SENT* char ptr in TxCircBuuffer*/
-
-	volatile char bCircArrRx[RXBUFFERSIZE];/*!< circular buffer for RX msg*/
-	volatile char bCircArrTx[RXBUFFERSIZE];/*!< circular buffer for TX msg*/
-
 	static ETH_InitTypeDef ETH_InitStructure;
 	static __IO uint32_t  EthStatus;
 	static __IO uint8_t EthLinkStatus;
 	static struct netif gnetif;
 
-  static ip_addr_t ip_local;
+  static ip_addr_t local_ip;
   static ip_addr_t netmask;
   static ip_addr_t gateway;
-  static ip_addr_t ip_server;
+  static ip_addr_t server_ip;
+	static int server_port;
 
 	static struct client *esTx;
 	static struct tcp_pcb *pcbTx;
+	static u16_t nBytesToTx;
 
-
-protected://#####################################################################
-
-	unsigned char RCC_Configuration(void);
-
-	unsigned char GPIO_Config(void);
-
-	unsigned char	ETH_StructConfig(void);
-
-	unsigned char NVIC_StructConfig(void);
-
-	//	char bufferIsFull(void); /*! @todo to implement if needed*/
-
-	char setup_HW(void);
-
+private:
+	
 	struct tcp_pcb *client_pcb;
 	uint32_t TCPTimer;
 	uint32_t ARPTimer;
-	u8_t dataTx[100];
+
+	u8_t bArrTx[TCP_SND_BUF];
+
+private:
+			
+	unsigned char RCC_Configuration(void);
+	unsigned char GPIO_Config(void);
+	unsigned char	ETH_StructConfig(void);
+	unsigned char NVIC_StructConfig(void);
+
+protected://#####################################################################
+
+	unsigned char setup_HW(void);
 
 public://#####################################################################
 
-	void setupEth(ip_addr_t ip_loc, ip_addr_t mask, ip_addr_t gw, ip_addr_t ip_srv) {
-		ip_local = ip_loc;
+	void setupEth(ip_addr_t loc_ip, ip_addr_t mask, ip_addr_t gw, ip_addr_t srv_ip, int srv_port) 
+	{
+		local_ip = loc_ip;
 		netmask = mask;
 		gateway = gw;
-		ip_server = ip_srv;
+		server_ip = srv_ip;
+		server_port = srv_port;
 	}
 
 	void  cleanAllLocalVariables(void);
 
 	virtual int open(void);
 
-	char isOpen (void);
+	char isConnected (void);
 
 	void close (void);
 
 	void poll(uint32_t localTime);
-
-	void puts(const char *s);
-
-	void cleanBuffer(volatile char *buffer, const unsigned short int numChar);
-
-	void cleanBuffer(void);
-
-	int read(volatile char *msgRx);
-
-	int bytesAvailable(void);
 
 	int bytesToWrite(void);
 
@@ -210,6 +190,7 @@ public://#####################################################################
 	
 	friend void ETH_link_callback(struct netif *netif);
 	friend void tcp_client_handle (struct tcp_pcb *tpcb, struct client *es);
+	friend err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
 
 };
 

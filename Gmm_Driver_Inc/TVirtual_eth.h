@@ -23,7 +23,7 @@ public:
 
 	void subscribe(void);
 
-	void setupEth(ip_addr_t ip_local, ip_addr_t mask, ip_addr_t gw, ip_addr_t ip_server);
+	void setupEth(ip_addr_t local_ip, ip_addr_t mask, ip_addr_t gw, ip_addr_t server_ip, int server_port);
 
 	void close(void);
 	void closeAllUsers(void);
@@ -36,7 +36,6 @@ public:
 	int bytesAvailable(void);
 
 	unsigned char write(const char *msg, unsigned short int charNum2Send);
-	void write(void);
 	int bytesToWrite(void);
 	void resetBytesRX(void);
 	void rxCallback(char *payload);
