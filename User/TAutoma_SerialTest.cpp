@@ -15,11 +15,17 @@
 #include <string.h>
 #include <stdarg.h>
 
-/*Static IP ADDRESS: IP_ADDR0.IP_ADDR1.IP_ADDR2.IP_ADDR3 */
-#define IP_ADDR0   192
-#define IP_ADDR1   168
-#define IP_ADDR2   1
-#define IP_ADDR3   10
+/*Static IP ADDRESS: IP_1_ADDR0.IP_1_ADDR1.IP_1_ADDR2.IP_1_ADDR3 */
+#define IP_1_ADDR0   192
+#define IP_1_ADDR1   168
+#define IP_1_ADDR2   1
+#define IP_1_ADDR3   100
+   
+/*Static IP ADDRESS: IP_2_ADDR0.IP_2_ADDR1.IP_2_ADDR2.IP_2_ADDR3 */
+#define IP_2_ADDR0   192
+#define IP_2_ADDR1   168
+#define IP_2_ADDR2   2
+#define IP_2_ADDR3   100
    
 /*NETMASK*/
 #define NETMASK_ADDR0   255
@@ -28,17 +34,23 @@
 #define NETMASK_ADDR3   0
 
 /*Gateway Address*/
-#define GW_ADDR0   192
-#define GW_ADDR1   168
-#define GW_ADDR2   1
-#define GW_ADDR3   254
+#define GW_ADDR0   0
+#define GW_ADDR1   0
+#define GW_ADDR2   0
+#define GW_ADDR3   0
 
-#define SERVER_IP_ADDR0   192
-#define SERVER_IP_ADDR1   168
-#define SERVER_IP_ADDR2   1
-#define SERVER_IP_ADDR3   105
+#define SERVER_IP_1_ADDR0   192
+#define SERVER_IP_1_ADDR1   168
+#define SERVER_IP_1_ADDR2   1
+#define SERVER_IP_1_ADDR3   101
 
-#define SERVER_PORT       2020
+#define SERVER_IP_2_ADDR0   192
+#define SERVER_IP_2_ADDR1   168
+#define SERVER_IP_2_ADDR2   2
+#define SERVER_IP_2_ADDR3   101
+
+#define SERVER_PORT_A       2020
+#define SERVER_PORT_B       8443
 
 
 TAutomaSerial_Test automaSerial;
@@ -77,6 +89,23 @@ void TAutomaSerial_Test::executeSM()
 	}
 }
 //---------------------------------------------------------------------------
+void TAutomaSerial_Test::showMainMenu(void)
+{
+	char str[50];
+	
+	ClearScreen();
+	PutStrXY(5, 5, "ETH Test");
+	sprintf(str, "1) Connect to %d.%d.%d.%d:%d", SERVER_IP_1_ADDR0, SERVER_IP_1_ADDR1, SERVER_IP_1_ADDR2, SERVER_IP_1_ADDR3, SERVER_PORT_A);
+	PutStrXY(0, 7, str);
+	sprintf(str, "2) Connect to %d.%d.%d.%d:%d", SERVER_IP_2_ADDR0, SERVER_IP_2_ADDR1, SERVER_IP_2_ADDR2, SERVER_IP_2_ADDR3, SERVER_PORT_A);
+	PutStrXY(0, 8, str);
+	sprintf(str, "3) Connect to %d.%d.%d.%d:%d", SERVER_IP_1_ADDR0, SERVER_IP_1_ADDR1, SERVER_IP_1_ADDR2, SERVER_IP_1_ADDR3, SERVER_PORT_B);
+	PutStrXY(0, 9, str);
+	PutStrXY(0, 10,"4) Connect to void");
+	PutStrXY(0, 12,"D) Disconnect");
+		
+	PutStrXY(0, 16, (pEth && pEth->isOpen()) ? "Connected" : "Disconnected");
+}
 
 void TAutomaSerial_Test::stat_Init()
 {
@@ -119,11 +148,7 @@ void TAutomaSerial_Test::stat_Init()
 
 	if (!err && !err_1)
 	{
-		ClearScreen();
-		PutStrXY(5, 5, "ETH Test");
-		PutStrXY(0, 7, "1) Connect");
-		PutStrXY(0, 8, "2) Disconnect");
-		PutStrXY(0, 12, "Disconnected");
+		showMainMenu();
 		setState(ST_MENU);
 	}
 }
@@ -137,7 +162,7 @@ void TAutomaSerial_Test::stat_Menu()
 		if (bEthOpen != pEth->isOpen())
 		{
 			bEthOpen = pEth->isOpen();
-			PutStrXY(0, 12, bEthOpen ? "Connected" : "Disconnected");
+			PutStrXY(0, 16, bEthOpen ? "Connected" : "Disconnected");
 		}
 		
 		if( pEth->bytesAvailable())
@@ -162,6 +187,8 @@ void TAutomaSerial_Test::stat_Menu()
 				switch (msgRx[0])
 				{
 					case '1':
+					case '2':
+					case '3':
 						if (pEth != NULL)
 						{
 							bool err = false;
@@ -170,34 +197,61 @@ void TAutomaSerial_Test::stat_Menu()
 							ip_addr_t gw;
 							ip_addr_t ip_server;
 
-							PutStrXY(0, 12, "Connecting...");
+							PutStrXY(0, 16, "Connecting...");
 							
 							if (pEth->isOpen())
 							{
 								pEth->close();
 							}
 
-							IP4_ADDR(&ip_local, IP_ADDR0, IP_ADDR1, IP_ADDR2, IP_ADDR3);
+							if (msgRx[0] == '1' || msgRx[0] == '3')  
+							{
+								IP4_ADDR(&ip_local, IP_1_ADDR0, IP_1_ADDR1, IP_1_ADDR2, IP_1_ADDR3);
+								IP4_ADDR(&ip_server, SERVER_IP_1_ADDR0, SERVER_IP_1_ADDR1, SERVER_IP_1_ADDR2, SERVER_IP_1_ADDR3);
+							} 
+							else 
+							{
+								IP4_ADDR(&ip_local, IP_2_ADDR0, IP_2_ADDR1, IP_2_ADDR2, IP_2_ADDR3);
+								IP4_ADDR(&ip_server, SERVER_IP_2_ADDR0, SERVER_IP_2_ADDR1, SERVER_IP_2_ADDR2, SERVER_IP_2_ADDR3);
+							} 
 							IP4_ADDR(&netmask, NETMASK_ADDR0, NETMASK_ADDR1 , NETMASK_ADDR2, NETMASK_ADDR3);
 							IP4_ADDR(&gw, GW_ADDR0, GW_ADDR1, GW_ADDR2, GW_ADDR3);
-							IP4_ADDR(&ip_server, SERVER_IP_ADDR0, SERVER_IP_ADDR1, SERVER_IP_ADDR2, SERVER_IP_ADDR3);
-							pEth->setupEth(ip_local, netmask, gw, ip_server, SERVER_PORT);
+							pEth->setupEth(ip_local, netmask, gw, ip_server, (msgRx[0] == '3') ? SERVER_PORT_B : SERVER_PORT_A);
 							
 							err = pEth->open();
 
 							if (err)
-								PutStrXY(0, 12, "Error opening connection");
+								PutStrXY(0, 16, "Error opening connection");
 						}
 						break;
-					case '2':
+					case '4':
+						if (pEth != NULL)
+						{
+							bool err = false;
+							
+							PutStrXY(0, 16, "Connecting...");
+							
+							if (pEth->isOpen())
+							{
+								pEth->close();
+							}
+
+							err = pEth->open();
+
+							if (err)
+								PutStrXY(0, 16, "Error opening connection");
+						}
+						break;
+					case 'D':
 						if (pEth)
 						{
-							PutStrXY(0, 12, "Disconnecting...");
+							PutStrXY(0, 16, "Disconnecting...");
 
 							pEth->close();
 						}
 						break;
 					default:
+						showMainMenu();
 						break;
 				}
 			}

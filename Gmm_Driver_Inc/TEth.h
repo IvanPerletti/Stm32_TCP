@@ -95,7 +95,7 @@ public:
 protected:
 	static ETH_InitTypeDef ETH_InitStructure;
 	static __IO uint32_t  EthStatus;
-	static __IO uint8_t EthLinkStatus;
+	static __IO bool EthLinkStatus;
 	static struct netif gnetif;
 
   static ip_addr_t local_ip;
@@ -189,7 +189,7 @@ public://#####################################################################
 	}
 	
 	friend void ETH_link_callback(struct netif *netif);
-	friend void tcp_client_handle (struct tcp_pcb *tpcb, struct client *es);
+	friend void tcp_client_handle (struct client *es);
 	friend err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
 
 };

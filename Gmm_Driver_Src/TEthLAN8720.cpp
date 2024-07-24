@@ -67,19 +67,21 @@ void TEthLAN8720::closeAllUsers(void)
  */
 char TEthLAN8720::openInstance(long qID)
 {
+	char error = 0;
+	
 	if (qID >= 0 && qID < MAX_ETHLAN8720_NUM)
 		{
 			if (qOpened.indexOf(qID) < 0)
 			{
-				qOpened.push(qID);
 				if (!isConnected() && qID==0)
 				{
-					open();
+				if ((error = open()) == 0)
+					qOpened.push(qID);
 				}
 			}
 		}
 	
-	return 0;
+	return error;
 }
 
 //------------------------------------------------------------------------------
@@ -115,4 +117,9 @@ void ETHLAN8720_RxCallback(u8_t *payload, u16_t len)
 	{
 		ethLAN8720.rxCallback(payload[ii]);
 	}
+}
+
+void ETHLAN8720_CloseCallBack(void)
+{
+		ethLAN8720.closeAllUsers();
 }

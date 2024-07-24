@@ -29,7 +29,7 @@
 //#include "stm32f4_discovery.h"
 
 /* Private define ------------------------------------------------------------*/
-#define RXBUFFERSIZE 128 // CHOOSE A POWER OF TWO NUMBER (speed for modulus)
+#define RXBUFFERSIZE 512 // CHOOSE A POWER OF TWO NUMBER (speed for modulus)
 #define MAX_SERIAL_CALLBACKS 10
 #if RXBUFFERSIZE & (RXBUFFERSIZE-1) != 0
 #define RXBUFFERSIZE 128 // CHOOSE A POWER OF TWO NUMBER (optimized modulus function)
