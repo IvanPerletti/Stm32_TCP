@@ -19,7 +19,7 @@
 #define IP_ADDR0   192
 #define IP_ADDR1   168
 #define IP_ADDR2   1
-#define IP_ADDR3   10
+#define IP_ADDR3   100
    
 /*NETMASK*/
 #define NETMASK_ADDR0   255
@@ -36,7 +36,7 @@
 #define SERVER_IP_ADDR0   192
 #define SERVER_IP_ADDR1   168
 #define SERVER_IP_ADDR2   1
-#define SERVER_IP_ADDR3   105
+#define SERVER_IP_ADDR3   101
 
 #define SERVER_PORT       2020
 
@@ -77,6 +77,14 @@ void TAutomaSerial_Test::executeSM()
 	}
 }
 //---------------------------------------------------------------------------
+void TAutomaSerial_Test::showMainMenu(void)
+{
+	ClearScreen();
+	PutStrXY(5, 5, "ETH Test");
+	PutStrXY(0, 7, "1) Connect");
+	PutStrXY(0, 8, "2) Disconnect");
+	PutStrXY(0, 12, "Disconnected");
+}
 
 void TAutomaSerial_Test::stat_Init()
 {
@@ -119,11 +127,7 @@ void TAutomaSerial_Test::stat_Init()
 
 	if (!err && !err_1)
 	{
-		ClearScreen();
-		PutStrXY(5, 5, "ETH Test");
-		PutStrXY(0, 7, "1) Connect");
-		PutStrXY(0, 8, "2) Disconnect");
-		PutStrXY(0, 12, "Disconnected");
+		showMainMenu();
 		setState(ST_MENU);
 	}
 }
@@ -198,6 +202,7 @@ void TAutomaSerial_Test::stat_Menu()
 						}
 						break;
 					default:
+						showMainMenu();
 						break;
 				}
 			}

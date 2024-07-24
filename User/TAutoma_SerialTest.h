@@ -41,6 +41,8 @@ protected:
 	void stat_Init();
 	void stat_Menu();
 
+	void showMainMenu(void);
+		
 	TVirtual_Serial serial;
 	TVirtual_Serial serial1;
 

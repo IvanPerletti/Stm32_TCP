@@ -36,7 +36,7 @@ extern void ETHLAN8720_RxCallback(u8_t *payload, u16_t len);
 
 ETH_InitTypeDef TEth::ETH_InitStructure;
 __IO uint32_t TEth::EthStatus;
-__IO uint8_t TEth::EthLinkStatus;
+__IO bool TEth::EthLinkStatus = 0;
 
 struct netif TEth::gnetif;
 ip_addr_t TEth::local_ip;
@@ -46,7 +46,6 @@ ip_addr_t TEth::server_ip;
 int TEth::server_port;
 
 struct client *TEth::esTx;
-struct tcp_pcb *TEth::pcbTx;
 u16_t TEth::nBytesToTx;
 
 extern "C" {
@@ -144,22 +143,23 @@ void ETH_link_callback(struct netif *netif)
     /* When the netif is fully configured this function must be called.*/
     netif_set_up(&TEth::gnetif);    
 
-		TEth::EthLinkStatus = 0;
+		TEth::EthLinkStatus = true;
   }
   else
   {
     ETH_Stop();
     /*  When the netif link is down this function must be called.*/
     netif_set_down(&TEth::gnetif);
+
+		TEth::EthLinkStatus = false;
   }
 }
 
 /* Handle the incoming TCP Data */
 
-void tcp_client_handle (struct tcp_pcb *tpcb, struct client *es)
+void tcp_client_handle (struct client *es)
 {
 	TEth::esTx = es;
-	TEth::pcbTx = tpcb;
 }
 
 void tcp_client_err(void *arg, err_t err)
@@ -236,7 +236,7 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
 		}
 		
     /* handle the received data */
-    tcp_client_handle(tpcb, es);
+    tcp_client_handle(es);
     
     pbuf_free(p);
 
@@ -403,7 +403,7 @@ void tcp_client_connection_close(struct tcp_pcb *tpcb, struct client * es )
   tcp_sent(tpcb, NULL);
   tcp_poll(tpcb, NULL,0);
 
-	tcp_client_handle(NULL, NULL);
+	tcp_client_handle(NULL);
 	
   if (es != NULL)
   {
@@ -453,7 +453,7 @@ err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
 			tcp_err(tpcb, tcp_client_err);
 			
 	    /* handle the TCP data */
-	    tcp_client_handle(tpcb, es);
+	    tcp_client_handle(es);
 			
       return ERR_OK;
     }
@@ -511,7 +511,7 @@ TEth::~TEth()
 void  TEth::cleanAllLocalVariables(void)
 {
 	nBytesToTx = 0;
-	tcp_client_handle(NULL, NULL);
+	tcp_client_handle(NULL);
 }
 //-----------------------------------------------------------------------------------------
 /**
@@ -772,11 +772,15 @@ int TEth::open(void)
 
 			/* When the netif is fully configured this function must be called.*/
 			netif_set_up(&gnetif);
+
+			EthLinkStatus = true;
 		}
 		else
 		{
 			/*  When the netif link is down this function must be called.*/
 			netif_set_down(&gnetif);
+
+			EthLinkStatus = false;
 		}
 		
 		/* Set the link callback function, this function is called on change of link status*/
@@ -804,7 +808,7 @@ int TEth::open(void)
 char TEth::isConnected (void)
 {
 	if (esTx)
-		return (esTx->state == ES_CONNECTED);
+		return (esTx->state == ES_CONNECTED && EthLinkStatus);
 	return(0x00);
 }
 //-----------------------------------------------------------------------------------------
@@ -814,31 +818,24 @@ char TEth::isConnected (void)
 void TEth::close (void)
 {
 	if (isConnected())
-		tcp_client_connection_close(pcbTx, esTx);
+		tcp_client_connection_close(esTx->pcb, esTx);
 }
 
 void TEth::poll(uint32_t localTime)
 {
-
-	static uint8_t status = 0;
 	uint32_t t = (ETH_ReadPHYRegister(ETH_PHY_ADDRESS, PHY_BSR) & 0x4);
 	
 	/* If we have link and previous check was not yet */
-	if (t && !status) 
+	if (t && !EthLinkStatus) 
 	{
 		/* Set link up */
 		netif_set_link_up(&gnetif);
-		
-		status = 1;
 	}	
 	/* If we don't have link and it was on previous check */
-	if (!t && status) 
+	if (!t && EthLinkStatus) 
 	{
-		EthLinkStatus = 1;
 		/* Set link down */
 		netif_set_link_down(&gnetif);
-			
-		status = 0;
 	}
 	
 	/* check if any packet received */
