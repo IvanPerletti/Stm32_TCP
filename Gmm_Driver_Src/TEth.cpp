@@ -514,6 +514,11 @@ TEth::~TEth()
 void  TEth::cleanAllLocalVariables(void)
 {
 	nBytesToTx = 0;
+	
+	local_ip.addr = 0;
+	server_ip.addr = 0;
+	server_port = 0;
+	
 	tcp_client_handle(NULL);
 }
 //-----------------------------------------------------------------------------------------

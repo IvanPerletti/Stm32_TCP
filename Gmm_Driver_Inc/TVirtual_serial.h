@@ -9,7 +9,7 @@
 #include "TSerial485.h"
 #include "IQ_Generic.h"
 
-#define RX_BYTE_NUM 64
+#define RX_BYTE_NUM 512
 #define TX_BYTE_NUM RX_BYTE_NUM
 
 #ifndef GMM_DRIVER_INC_TCOM_SERIAL_H_
