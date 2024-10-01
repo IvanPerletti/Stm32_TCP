@@ -104,13 +104,14 @@ protected:
   static ip_addr_t server_ip;
 	static int server_port;
 
+	static struct tcp_pcb *client_pcb;
 	static struct client *esTx;
 	static struct tcp_pcb *pcbTx;
 	static u16_t nBytesToTx;
+	static bool needRetryConnect;
 
 private:
 	
-	struct tcp_pcb *client_pcb;
 	uint32_t TCPTimer;
 	uint32_t ARPTimer;
 
@@ -191,6 +192,7 @@ public://#####################################################################
 	friend void ETH_link_callback(struct netif *netif);
 	friend void tcp_client_handle (struct client *es);
 	friend err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
+	friend void tcp_client_err(void *arg, err_t err);
 
 };
 

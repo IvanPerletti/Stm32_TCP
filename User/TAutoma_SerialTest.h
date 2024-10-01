@@ -23,6 +23,7 @@ public:
 
 	TAutomaSerial_Test(void);
 	void executeSM(void);
+	void monitor(void);
 
 private:
 	typedef enum
@@ -61,6 +62,7 @@ protected:
 
 	char msgRx[128];
 	char msgRx_1[128];
+	int cntPacket;
 
 	TChronoMeter timoutRX;
 

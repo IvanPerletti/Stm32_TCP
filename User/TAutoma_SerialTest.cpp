@@ -11,6 +11,7 @@
  *      4) Write to comCM25 physical bus by using two instances of the same type
  */
 #include "TAutoma_SerialTest.h"
+#include "TDigitalPort.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -88,6 +89,14 @@ void TAutomaSerial_Test::executeSM()
 		break;
 	}
 }
+
+void TAutomaSerial_Test::monitor(void)
+{
+	if (pEth)
+	{
+		pEth->poll(timoutRX.now());
+	}
+}
 //---------------------------------------------------------------------------
 void TAutomaSerial_Test::showMainMenu(void)
 {
@@ -102,7 +111,9 @@ void TAutomaSerial_Test::showMainMenu(void)
 	sprintf(str, "3) Connect to %d.%d.%d.%d:%d", SERVER_IP_1_ADDR0, SERVER_IP_1_ADDR1, SERVER_IP_1_ADDR2, SERVER_IP_1_ADDR3, SERVER_PORT_B);
 	PutStrXY(0, 9, str);
 	PutStrXY(0, 10,"4) Connect to void");
-	PutStrXY(0, 12,"D) Disconnect");
+	PutStrXY(0, 11,"5) Start test");
+	PutStrXY(0, 12,"6) Reset OUT C8");
+	PutStrXY(0, 14,"D) Disconnect");
 		
 	PutStrXY(0, 16, (pEth && pEth->isOpen()) ? "Connected" : "Disconnected");
 }
@@ -145,6 +156,7 @@ void TAutomaSerial_Test::stat_Init()
 		err = pSerial232->open();
 	}
 
+	digitalPort.init();
 
 	if (!err && !err_1)
 	{
@@ -157,22 +169,20 @@ void TAutomaSerial_Test::stat_Menu()
 {
 	if (pEth)
 	{
-		pEth->poll(tClock.watch());
-		
 		if (bEthOpen != pEth->isOpen())
 		{
 			bEthOpen = pEth->isOpen();
 			PutStrXY(0, 16, bEthOpen ? "Connected" : "Disconnected");
 		}
 		
-		if( pEth->bytesAvailable())
+		if( (nBytesAvail = pEth->bytesAvailable()) == 10)
 		{
 			nBytesAvail = pEth->read(msgRx);
 
-			if(nBytesAvail)
-			{
-				pEth->write(msgRx, nBytesAvail);
-			}
+			//if (++cntPacket >= 10) 
+				//digitalPort.resetNow(DO_PC8);
+			
+			//pEth->write(msgRx, nBytesAvail);
 		}
 	}
 
@@ -241,6 +251,14 @@ void TAutomaSerial_Test::stat_Menu()
 							if (err)
 								PutStrXY(0, 16, "Error opening connection");
 						}
+						break;
+					case '5':
+						cntPacket = 0;
+						digitalPort.setNow(DO_PC8);
+						pEth->write("0123456789", 10);
+						break;
+					case '6':
+						digitalPort.resetNow(DO_PC8);
 						break;
 					case 'D':
 						if (pEth)

@@ -30,6 +30,8 @@ extern "C"{
 	#include "ethernetif.h"
 }
 
+#include "TDigitalPort.h"
+
 extern void ETHLAN8720_RxCallback(u8_t *payload, u16_t len);
 extern void ETHLAN8720_CloseCallBack(void);
 
@@ -46,8 +48,10 @@ ip_addr_t TEth::gateway;
 ip_addr_t TEth::server_ip;
 int TEth::server_port;
 
+struct tcp_pcb *TEth::client_pcb;
 struct client *TEth::esTx;
 u16_t TEth::nBytesToTx;
+bool TEth::needRetryConnect;
 
 extern "C" {
 	void Delay(int ms)
@@ -172,7 +176,16 @@ void tcp_client_err(void *arg, err_t err)
     LWIP_ASSERT("arg != NULL",arg != NULL);
 
     es = (struct client *)arg;
+		if (es)
     es->state = ES_NOT_CONNECTED;
+		else
+		{
+			if (err == ERR_RST)
+			{
+				TEth::client_pcb = NULL;
+				TEth::needRetryConnect = true;
+			}
+		}
 	}
 }
 
@@ -388,6 +401,12 @@ err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len)
     	tcp_client_connection_close(tpcb, es);
   }
 
+    
+		digitalPort.resetNow(DO_PC8);
+		
+		
+  
+		
   return ERR_OK;
 }
 
@@ -746,6 +765,12 @@ int TEth::open(void)
 {
 	int error = 0;
 
+	// opening already on
+	if (isConnected() || needRetryConnect)
+		return error;
+	
+	needRetryConnect = false;
+	
 	if (local_ip.addr == 0 || server_ip.addr == 0 || server_port == 0)
 	{
 		error |= 0x01;
@@ -804,8 +829,11 @@ int TEth::open(void)
 		client_pcb = tcp_new();
 		
 		if (client_pcb != NULL)
+			{
+				tcp_err(client_pcb, tcp_client_err);
 			/* connect to destination address/port */
 			error = tcp_connect(client_pcb, &server_ip , server_port, tcp_client_connected);
+			}
 		else
 			error = ERR_MEM;
 	}
@@ -834,6 +862,7 @@ void TEth::close (void)
 {
 	if (isConnected())
 		tcp_client_connection_close(esTx->pcb, esTx);
+	needRetryConnect = false;
 }
 
 void TEth::poll(uint32_t localTime)
@@ -854,11 +883,29 @@ void TEth::poll(uint32_t localTime)
 	}
 	
 	/* check if any packet received */
+	if (client_pcb)
+	{
 	if (ETH_CheckFrameReceived())
 	{ 
 		/* process received ethernet packet */
 		ethernetif_input(&gnetif);
 	}
+	}
+	else if (needRetryConnect)
+	{
+		needRetryConnect = false;
+		
+		client_pcb = tcp_new();
+		
+
+		if (client_pcb != NULL)
+		{
+			tcp_err(client_pcb, tcp_client_err);
+			/* connect to destination address/port */
+			tcp_connect(client_pcb, &server_ip , server_port, tcp_client_connected);
+		}
+	}
+	
     /* handle periodic timers for LwIP */
 #if LWIP_TCP
   /* TCP periodic process every 250 ms */

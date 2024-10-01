@@ -8,8 +8,8 @@
 #include "TEthLAN8720.h"
 #include "IQ_Generic.h"
 
-#define RX_BYTE_NUM 64
-#define TX_BYTE_NUM RX_BYTE_NUM
+#define ETH_RX_BYTE_NUM	64
+#define ETH_TX_BYTE_NUM ETH_RX_BYTE_NUM
 
 #ifndef GMM_DRIVER_INC_TCOM_ETH_H_
 #define GMM_DRIVER_INC_TCOM_ETH_H_
@@ -46,7 +46,7 @@ private:
 
 	TEthLAN8720* pEthLAN8720;
 
-	IQ_Generic<char,RX_BYTE_NUM> rxQ;
+	IQ_Generic<char,ETH_RX_BYTE_NUM> rxQ;
 };
 
 #endif /* GMM_DRIVER_INC_TCOM_ETH_H_ */
