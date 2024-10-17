@@ -186,10 +186,9 @@ int main (void)
 //			bridgingCAN.executeSM();
 //			timerPolling.start();
 //		}
-		automaSerial.monitor();
-		if (timer_SerAutoma.exceed(20.1f)) //2000
+			automaSerial.monitor();
+		if (timer_SerAutoma.exceed(5.1f)) //2000
 		{
-
 			automaSerial.executeSM();
 			//automaEth.executeSM();
 			timer_SerAutoma.start();

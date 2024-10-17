@@ -30,7 +30,9 @@ extern "C"{
 	#include "ethernetif.h"
 }
 
+#ifdef	USE_GPIO_FOR_DEBUG
 #include "TDigitalPort.h"
+#endif
 
 extern void ETHLAN8720_RxCallback(u8_t *payload, u16_t len);
 extern void ETHLAN8720_CloseCallBack(void);
@@ -52,6 +54,7 @@ struct tcp_pcb *TEth::client_pcb;
 struct client *TEth::esTx;
 u16_t TEth::nBytesToTx;
 bool TEth::needRetryConnect;
+u16_t TEth::tcp_tmr_interval;
 
 extern "C" {
 	void Delay(int ms)
@@ -177,7 +180,7 @@ void tcp_client_err(void *arg, err_t err)
 
     es = (struct client *)arg;
 		if (es)
-    es->state = ES_NOT_CONNECTED;
+			es->state = ES_NOT_CONNECTED;
 		else
 		{
 			if (err == ERR_RST)
@@ -201,7 +204,10 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
   struct client *es;
   err_t ret_err;
   
-
+#ifdef	USE_GPIO_FOR_DEBUG
+	digitalPort.setNow(DO_PC9);	
+#endif
+	
   LWIP_ASSERT("arg != NULL",arg != NULL);
   
   es = (struct client *)arg;
@@ -301,7 +307,7 @@ void tcp_client_send(struct tcp_pcb *tpcb, struct client * es)
     /* get pointer on pbuf from es structure */
     ptr = es->p_tx;
 
-    /* enqueue data for transmission */
+		/* enqueue data for transmission */
     wr_err = tcp_write(tpcb, ptr->payload, ptr->len, 1);
     
     if (wr_err == ERR_OK)
@@ -383,8 +389,12 @@ err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len)
 
   LWIP_UNUSED_ARG(len);
 
+#ifdef	USE_GPIO_FOR_DEBUG
+	digitalPort.resetNow(DO_PC8);	
+#endif
+	
   es = (struct client *)arg;
-  
+
   if(es->p_tx != NULL)
   {
 		TEth::nBytesToTx -= len;
@@ -401,12 +411,6 @@ err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len)
     	tcp_client_connection_close(tpcb, es);
   }
 
-    
-		digitalPort.resetNow(DO_PC8);
-		
-		
-  
-		
   return ERR_OK;
 }
 
@@ -477,6 +481,8 @@ err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
 	    /* handle the TCP data */
 	    tcp_client_handle(es);
 			
+			TEth::tcp_tmr_interval = 0;
+			
       return ERR_OK;
     }
     else
@@ -505,6 +511,8 @@ err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
 TEth::TEth()
 {
 	cleanAllLocalVariables();
+	
+	tcp_tmr_interval = TCP_TMR_INTERVAL;
 }
 //-----------------------------------------------------------------------------------------
 /**
@@ -777,68 +785,70 @@ int TEth::open(void)
 	}
 	else 
 	{
-	error = setup_HW();
+		error = setup_HW();
 
-	if (error == 0) 
-	{
-		/* Initializes the dynamic memory heap defined by MEM_SIZE.*/
-		mem_init();
-
-		/* Initializes the memory pools defined by MEMP_NUM_x.*/
-		memp_init();
-		
-		/* - netif_add(struct netif *netif, struct ip_addr *ipaddr,
-		struct ip_addr *netmask, struct ip_addr *gw,
-		void *state, err_t (* init)(struct netif *netif),
-		err_t (* input)(struct pbuf *p, struct netif *netif))
-
-		Adds your network interface to the netif_list. Allocate a struct
-		netif and pass a pointer to this structure as the first argument.
-		Give pointers to cleared ip_addr structures when using DHCP,
-		or fill them with sane numbers otherwise. The state pointer may be NULL.
-
-		The init function pointer must point to a initialization function for
-		your ethernet netif interface. The following code illustrates it's use.*/
-		netif_add(&gnetif, &local_ip, &netmask, &gateway, NULL, &ethernetif_init, &ethernet_input);
-
-		/*  Registers the default network interface.*/
-		netif_set_default(&gnetif);
-
-		if (EthStatus == (ETH_INIT_FLAG | ETH_LINK_FLAG))
-		{ 
-			/* Set Ethernet link flag */
-			gnetif.flags |= NETIF_FLAG_LINK_UP;
-
-			/* When the netif is fully configured this function must be called.*/
-			netif_set_up(&gnetif);
-
-			EthLinkStatus = true;
-		}
-		else
+		if (error == 0) 
 		{
-			/*  When the netif link is down this function must be called.*/
-			netif_set_down(&gnetif);
+			/* Initializes the dynamic memory heap defined by MEM_SIZE.*/
+			mem_init();
 
-			EthLinkStatus = false;
-		}
-		
-		/* Set the link callback function, this function is called on change of link status*/
-		netif_set_link_callback(&gnetif, ETH_link_callback);
-	
-		/* create new tcp pcb */
-		client_pcb = tcp_new();
-		
-		if (client_pcb != NULL)
-			{
-				tcp_err(client_pcb, tcp_client_err);
-			/* connect to destination address/port */
-			error = tcp_connect(client_pcb, &server_ip , server_port, tcp_client_connected);
+			/* Initializes the memory pools defined by MEMP_NUM_x.*/
+			memp_init();
+			
+			/* - netif_add(struct netif *netif, struct ip_addr *ipaddr,
+			struct ip_addr *netmask, struct ip_addr *gw,
+			void *state, err_t (* init)(struct netif *netif),
+			err_t (* input)(struct pbuf *p, struct netif *netif))
+
+			Adds your network interface to the netif_list. Allocate a struct
+			netif and pass a pointer to this structure as the first argument.
+			Give pointers to cleared ip_addr structures when using DHCP,
+			or fill them with sane numbers otherwise. The state pointer may be NULL.
+
+			The init function pointer must point to a initialization function for
+			your ethernet netif interface. The following code illustrates it's use.*/
+			netif_add(&gnetif, &local_ip, &netmask, &gateway, NULL, &ethernetif_init, &ethernet_input);
+
+			/*  Registers the default network interface.*/
+			netif_set_default(&gnetif);
+
+			if (EthStatus == (ETH_INIT_FLAG | ETH_LINK_FLAG))
+			{ 
+				/* Set Ethernet link flag */
+				gnetif.flags |= NETIF_FLAG_LINK_UP;
+
+				/* When the netif is fully configured this function must be called.*/
+				netif_set_up(&gnetif);
+
+				EthLinkStatus = true;
 			}
-		else
-			error = ERR_MEM;
-	}
-	}
+			else
+			{
+				/*  When the netif link is down this function must be called.*/
+				netif_set_down(&gnetif);
+
+				EthLinkStatus = false;
+			}
+			
+			/* Set the link callback function, this function is called on change of link status*/
+			netif_set_link_callback(&gnetif, ETH_link_callback);
 		
+			/* create new tcp pcb */
+			client_pcb = tcp_new();
+			
+
+			if (client_pcb != NULL)
+			{
+				tcp_tmr_interval = TCP_TMR_INTERVAL;
+				tcp_err(client_pcb, tcp_client_err);
+				/* connect to destination address/port */
+				error = tcp_connect(client_pcb, &server_ip , server_port, tcp_client_connected);
+			}
+			else
+				error = ERR_MEM;
+		}
+	}
+	
 	return(error);
 }
 //-----------------------------------------------------------------------------------------
@@ -885,11 +895,11 @@ void TEth::poll(uint32_t localTime)
 	/* check if any packet received */
 	if (client_pcb)
 	{
-	if (ETH_CheckFrameReceived())
-	{ 
-		/* process received ethernet packet */
-		ethernetif_input(&gnetif);
-	}
+		if (ETH_CheckFrameReceived())
+		{ 
+			/* process received ethernet packet */
+			ethernetif_input(&gnetif);
+		}
 	}
 	else if (needRetryConnect)
 	{
@@ -909,11 +919,11 @@ void TEth::poll(uint32_t localTime)
     /* handle periodic timers for LwIP */
 #if LWIP_TCP
   /* TCP periodic process every 250 ms */
-  if (localTime - TCPTimer >= TCP_TMR_INTERVAL)
+  if (localTime - TCPTimer >= tcp_tmr_interval)
   {
     TCPTimer =  localTime;
     tcp_tmr();
-  }
+  }	
 #endif
 
   /* ARP periodic process every 5s */

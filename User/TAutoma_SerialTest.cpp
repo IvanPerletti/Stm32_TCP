@@ -11,7 +11,11 @@
  *      4) Write to comCM25 physical bus by using two instances of the same type
  */
 #include "TAutoma_SerialTest.h"
+
+#ifdef	USE_GPIO_FOR_DEBUG
 #include "TDigitalPort.h"
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -53,6 +57,8 @@
 #define SERVER_PORT_A       2020
 #define SERVER_PORT_B       8443
 
+#define MSG_TEST						"00000000001111111111222222222233333333334444444444"
+#define N_MSG_TEST					100
 
 TAutomaSerial_Test automaSerial;
 
@@ -95,6 +101,22 @@ void TAutomaSerial_Test::monitor(void)
 	if (pEth)
 	{
 		pEth->poll(timoutRX.now());
+		if( (nBytesAvail = pEth->bytesAvailable()) == strlen(MSG_TEST))
+		{
+			nBytesAvail = pEth->read(msgRx);
+			
+#ifdef	USE_GPIO_FOR_DEBUG
+			digitalPort.resetNow(DO_PC9);
+#endif
+			
+			if (++cntPacket < N_MSG_TEST) 
+			{
+#ifdef	USE_GPIO_FOR_DEBUG
+				digitalPort.setNow(DO_PC8);
+#endif
+				pEth->write(msgRx, nBytesAvail);
+			}
+		}
 	}
 }
 //---------------------------------------------------------------------------
@@ -112,7 +134,9 @@ void TAutomaSerial_Test::showMainMenu(void)
 	PutStrXY(0, 9, str);
 	PutStrXY(0, 10,"4) Connect to void");
 	PutStrXY(0, 11,"5) Start test");
+#ifdef	USE_GPIO_FOR_DEBUG
 	PutStrXY(0, 12,"6) Reset OUT C8");
+#endif
 	PutStrXY(0, 14,"D) Disconnect");
 		
 	PutStrXY(0, 16, (pEth && pEth->isOpen()) ? "Connected" : "Disconnected");
@@ -156,8 +180,11 @@ void TAutomaSerial_Test::stat_Init()
 		err = pSerial232->open();
 	}
 
-	digitalPort.init();
 
+#ifdef	USE_GPIO_FOR_DEBUG
+	digitalPort.init();
+#endif
+	
 	if (!err && !err_1)
 	{
 		showMainMenu();
@@ -173,16 +200,6 @@ void TAutomaSerial_Test::stat_Menu()
 		{
 			bEthOpen = pEth->isOpen();
 			PutStrXY(0, 16, bEthOpen ? "Connected" : "Disconnected");
-		}
-		
-		if( (nBytesAvail = pEth->bytesAvailable()) == 10)
-		{
-			nBytesAvail = pEth->read(msgRx);
-
-			//if (++cntPacket >= 10) 
-				//digitalPort.resetNow(DO_PC8);
-			
-			//pEth->write(msgRx, nBytesAvail);
 		}
 	}
 
@@ -254,12 +271,19 @@ void TAutomaSerial_Test::stat_Menu()
 						break;
 					case '5':
 						cntPacket = 0;
+#ifdef	USE_GPIO_FOR_DEBUG
 						digitalPort.setNow(DO_PC8);
-						pEth->write("0123456789", 10);
+#endif
+						pEth->write(MSG_TEST, strlen(MSG_TEST));
 						break;
+#ifdef	USE_GPIO_FOR_DEBUG
 					case '6':
 						digitalPort.resetNow(DO_PC8);
 						break;
+					case '7':
+						digitalPort.setNow(DO_PC8);
+						break;
+#endif					
 					case 'D':
 						if (pEth)
 						{

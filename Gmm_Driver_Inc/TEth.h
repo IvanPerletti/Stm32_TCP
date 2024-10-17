@@ -94,7 +94,7 @@ public:
 
 protected:
 	static ETH_InitTypeDef ETH_InitStructure;
-	static __IO uint32_t  EthStatus;
+	static __IO uint32_t EthStatus;
 	static __IO bool EthLinkStatus;
 	static struct netif gnetif;
 
@@ -109,6 +109,7 @@ protected:
 	static struct tcp_pcb *pcbTx;
 	static u16_t nBytesToTx;
 	static bool needRetryConnect;
+	static u16_t tcp_tmr_interval;
 
 private:
 	
@@ -193,6 +194,7 @@ public://#####################################################################
 	friend void tcp_client_handle (struct client *es);
 	friend err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
 	friend void tcp_client_err(void *arg, err_t err);
+	friend err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err);
 
 };
 
