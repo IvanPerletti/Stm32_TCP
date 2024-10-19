@@ -25,13 +25,20 @@ TVirtual_Eth::~TVirtual_Eth(void)
  *  @ and assign the unique id number to the user (unique for users of the same physical port)
  *  @look at IdUserSerial232X in TSerial232.cpp
  */
-void TVirtual_Eth::subscribe(void)
+bool TVirtual_Eth::subscribe(void)
 {
-	eth_InstID = TEthLAN8720::getInstance(pEthLAN8720);
+	bool ret = false;
+	
+	if ((eth_InstID = TEthLAN8720::getInstance(pEthLAN8720)) >= 0)
+	{
 	if(pEthLAN8720)
 	{
 		pEthLAN8720->registerRxCallback(this, &TVirtual_Eth::rxCallback);
+			ret = true;
 	}
+	}
+	
+	return ret;
 }
 
 void TVirtual_Eth::setupEth(ip_addr_t local_ip, ip_addr_t mask, ip_addr_t gw, ip_addr_t server_ip, int server_port)

@@ -21,7 +21,7 @@ public:
 	TVirtual_Eth(void);
 	virtual ~TVirtual_Eth(void);
 
-	void subscribe(void);
+	bool subscribe(void);
 
 	void setupEth(ip_addr_t local_ip, ip_addr_t mask, ip_addr_t gw, ip_addr_t server_ip, int server_port);
 
