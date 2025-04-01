@@ -57,8 +57,9 @@
 #define SERVER_PORT_A       2020
 #define SERVER_PORT_B       8443
 
-#define MSG_TEST						"00000000001111111111222222222233333333334444444444"
-#define N_MSG_TEST					100
+#define MSG_TEST						"TEST Message"
+//#define MSG_TEST						"00000000001111111111222222222233333333334444444444"
+//#define N_MSG_TEST					100
 
 TAutomaSerial_Test automaSerial;
 
@@ -101,21 +102,30 @@ void TAutomaSerial_Test::monitor(void)
 	if (pEth)
 	{
 		pEth->poll(timoutRX.now());
-		if( (nBytesAvail = pEth->bytesAvailable()) == strlen(MSG_TEST))
+		if( (nBytesAvail = pEth->bytesAvailable()) > 0)
 		{
+			int idx;
+			char str[50];
+			
 			nBytesAvail = pEth->read(msgRx);
-			
-#ifdef	USE_GPIO_FOR_DEBUG
-			digitalPort.resetNow(DO_PC9);
-#endif
-			
-			if (++cntPacket < N_MSG_TEST) 
-			{
-#ifdef	USE_GPIO_FOR_DEBUG
-				digitalPort.setNow(DO_PC8);
-#endif
-				pEth->write(msgRx, nBytesAvail);
+			sprintf(str, "\nT=%08d Rx %d bytes:", (int)timoutRX.now(), nBytesAvail);
+			PutStr(str);
+			for (idx=0; idx<nBytesAvail; idx++) {
+				sprintf(str, " 0x%02X", msgRx[idx]);
+				PutStr(str);
 			}
+			
+//#ifdef	USE_GPIO_FOR_DEBUG
+//			digitalPort.resetNow(DO_PC9);
+//#endif
+//			
+//			if (++cntPacket < N_MSG_TEST) 
+//			{
+//#ifdef	USE_GPIO_FOR_DEBUG
+//				digitalPort.setNow(DO_PC8);
+//#endif
+//				pEth->write(msgRx, nBytesAvail);
+//			}
 		}
 	}
 }
@@ -133,7 +143,8 @@ void TAutomaSerial_Test::showMainMenu(void)
 	sprintf(str, "3) Connect to %d.%d.%d.%d:%d", SERVER_IP_1_ADDR0, SERVER_IP_1_ADDR1, SERVER_IP_1_ADDR2, SERVER_IP_1_ADDR3, SERVER_PORT_B);
 	PutStrXY(0, 9, str);
 	PutStrXY(0, 10,"4) Connect to void");
-	PutStrXY(0, 11,"5) Start test");
+	PutStrXY(0, 11,"5) Send message <TEST Message>");
+//	PutStrXY(0, 11,"5) Start test");
 #ifdef	USE_GPIO_FOR_DEBUG
 	PutStrXY(0, 12,"6) Reset OUT C8");
 #endif
