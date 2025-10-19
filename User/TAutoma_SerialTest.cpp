@@ -12,13 +12,16 @@
  */
 #include "TAutoma_SerialTest.h"
 
-#ifdef	USE_GPIO_FOR_DEBUG
 #include "TDigitalPort.h"
-#endif
+#include "TAnalogPort_S76.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+
+
+#include "tcpprotocol.h"
 
 /*Static IP ADDRESS: IP_1_ADDR0.IP_1_ADDR1.IP_1_ADDR2.IP_1_ADDR3 */
 #define IP_1_ADDR0   192
@@ -76,6 +79,8 @@ TAutomaSerial_Test::TAutomaSerial_Test(void):
 	//pSerial232_1 = &serial1;
 
 	pEth = &eth;
+
+	ICan::getInstance(pCan);
 	
 	//timoutRX.start();
 	state	= ST_INIT;
@@ -97,6 +102,193 @@ void TAutomaSerial_Test::executeSM()
 	}
 }
 
+
+void TAutomaSerial_Test::parseCommand(char *message)
+{
+    if (tcpProtocolSlave.fromCommand(message))
+    {
+        if (tcpProtocolSlave.getTarget() == TcpProtocol::eTargetDin)
+        {
+            char *message = tcpProtocolSlave.toAnswer(digitalPort.check((enumDigitalIn)tcpProtocolSlave.getIdx()) == HIGH ? TcpProtocol::eStateOn : TcpProtocol::eStateOff);
+#ifndef STM32F4XX
+            ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+            tcpSlave->write(message);
+#else
+            pEth->write(message, (int)strlen(message));
+#endif
+        }
+        else if (tcpProtocolSlave.getTarget() == TcpProtocol::eTargetDout)
+        {
+#ifndef STM32F4XX
+            outputButtons[tcpProtocolSlave.getIdx()-1]->setIcon(tcpProtocolSlave.getState() == TcpProtocol::eStateOn ? QIcon(":/icons/on.png") : QIcon(":/icons/off.png"));
+#endif
+            if (tcpProtocolSlave.getState() == TcpProtocol::eStateOn)
+                digitalPort.setNow((enumDigitalOut)tcpProtocolSlave.getIdx());
+            else
+                digitalPort.resetNow((enumDigitalOut)tcpProtocolSlave.getIdx());
+            char *message = tcpProtocolSlave.toAnswer(digitalPort.check((enumDigitalOut)tcpProtocolSlave.getIdx()) == HIGH ? TcpProtocol::eStateOn : TcpProtocol::eStateOff);
+#ifndef STM32F4XX
+            ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+            tcpSlave->write(message);
+#else
+            pEth->write(message, (int)strlen(message));
+#endif
+        }
+        else if (tcpProtocolSlave.getTarget() == TcpProtocol::eTargetAnalog)
+        {
+            char *message = tcpProtocolSlave.toAnswer(tAnalogPort.read((enumAnalogPort)(tcpProtocolSlave.getIdx()-1)));
+#ifndef STM32F4XX
+            ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+            tcpSlave->write(message);
+#else
+            pEth->write(message, (int)strlen(message));
+#endif
+        }
+        else if (tcpProtocolSlave.getTarget() == TcpProtocol::eTargetCAN)
+        {
+            char *message = NULL;
+
+            if (tcpProtocolSlave.getCommand() == TcpProtocol::eCmdOpen)
+            {
+                pCan->open(0);
+                message = tcpProtocolSlave.toAnswer(TcpProtocol::eStateOpened);
+            }
+            else if (tcpProtocolSlave.getCommand() == TcpProtocol::eCmdClose)
+            {
+                pCan->close(0);
+                message = tcpProtocolSlave.toAnswer(TcpProtocol::eStateClosed);
+            }
+            else if (tcpProtocolSlave.getCommand() == TcpProtocol::eCmdSet)
+            {
+                if (tcpProtocolSlave.getParam() == TcpProtocol::eParamSpeed)
+                {
+                    int speed = strtol(tcpProtocolSlave.getParams(0), NULL, 10);
+                    switch (speed)
+                    {
+                    case 125:
+                        pCan->setSpeed(ICan::CAN_BUS_SPEED_125);
+                        break;
+                    case 250:
+                        pCan->setSpeed(ICan::CAN_BUS_SPEED_250);
+                        break;
+                    case 500:
+                        pCan->setSpeed(ICan::CAN_BUS_SPEED_500);
+                        break;
+                    default:
+                        ; // send error answer
+                    }
+                    message = tcpProtocolSlave.toAnswer(tcpProtocolSlave.getParam(), (int)pCan->getSpeed());
+                }
+                else if (tcpProtocolSlave.getParam() == TcpProtocol::eParamFilter)
+                {
+                    bool ret = false;
+                    uint16_t filters[4];
+
+                    for (int ind=0; ind<tcpProtocolSlave.getNParams(); ind++)
+                        filters[ind] = (uint16_t)strtol(tcpProtocolSlave.getParams(ind), NULL, 10);
+                    switch (tcpProtocolSlave.getNParams())
+                    {
+                    case 1:
+                        ret = pCan->registerFilter(0, filters[0]);
+                        break;
+                    case 2:
+                        ret = pCan->registerFilter(0, filters[0], filters[1]);
+                        break;
+                    case 3:
+                        ret = pCan->registerFilter(0, filters[0], filters[1], filters[2]);
+                        break;
+                    case 4:
+                        ret = pCan->registerFilter(0, filters[0], filters[1], filters[2], filters[3]);
+                        break;
+                    }
+                    if (ret)
+                        message = tcpProtocolSlave.toAnswer(tcpProtocolSlave.getParam(), tcpProtocolSlave.getNParams());
+                    else
+                        ; // send error answer
+                }
+            }
+            else if (tcpProtocolSlave.getCommand() == TcpProtocol::eCmdSend)
+            {
+                if (tcpProtocolSlave.getParam() == TcpProtocol::eParamData)
+                {
+                    bool ret = false;
+                    CanTxMsg canTxMsg;
+
+                    if (tcpProtocolSlave.getNParams() > 1)
+                    {
+                        canTxMsg.StdId = (uint32_t)strtol(tcpProtocolSlave.getParams(0), NULL, 16);
+                        canTxMsg.IDE = 0;
+                        canTxMsg.DLC = tcpProtocolSlave.getNParams() - 1;
+                        for (int ind=0; ind<tcpProtocolSlave.getNParams() - 1; ind++)
+                            canTxMsg.Data[ind] = (uint16_t)strtol(tcpProtocolSlave.getParams(ind+1), NULL, 16);
+                        pCan->write(&canTxMsg);
+                        ret = true;
+                    }
+                    if (ret)
+                        message = tcpProtocolSlave.toAnswer(tcpProtocolSlave.getParam(), tcpProtocolSlave.getNParams());
+                    else
+                        ; // send error answer
+                }
+
+            }
+            if (message)
+            {
+#ifndef STM32F4XX
+                ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+                tcpSlave->write(message);
+#else
+                pEth->write(message, (int)strlen(message));
+#endif
+            }
+        }
+    }
+}
+
+
+//void TAutomaSerial_Test::parseCommand(char *message)
+//{
+//    if (tcpProtocolSlave.fromCommand(message))
+//    {
+//        if (tcpProtocolSlave.getTarget() == TcpProtocol::eTargetDin)
+//        {
+//            char *message = tcpProtocolSlave.toAnswer(digitalPort.check((enumDigitalIn)tcpProtocolSlave.getIdx()) == HIGH ? TcpProtocol::eStateOn : TcpProtocol::eStateOff);
+//#ifndef STM32F4XX
+//            ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+//            tcpSlave->write(message);
+//#else
+//						pEth->write(message, (int)strlen(message));
+//#endif
+//        }
+//        else if (tcpProtocolSlave.getTarget() == TcpProtocol::eTargetDout)
+//        {
+//#ifndef STM32F4XX
+//            outputButtons[tcpProtocolSlave.getIdx()-1]->setIcon(tcpProtocolSlave.getState() == TcpProtocol::eStateOn ? QIcon(":/icons/on.png") : QIcon(":/icons/off.png"));
+//#endif					
+//            if (tcpProtocolSlave.getState() == TcpProtocol::eStateOn)
+//                digitalPort.setNow((enumDigitalOut)tcpProtocolSlave.getIdx());
+//            else
+//                digitalPort.resetNow((enumDigitalOut)tcpProtocolSlave.getIdx());
+//            char *message = tcpProtocolSlave.toAnswer(digitalPort.check((enumDigitalOut)tcpProtocolSlave.getIdx()) == HIGH ? TcpProtocol::eStateOn : TcpProtocol::eStateOff);
+//#ifndef STM32F4XX
+//            ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+//            tcpSlave->write(message);
+//#else
+//						pEth->write(message, (int)strlen(message));
+//#endif
+//        }
+//        else if (tcpProtocolSlave.getTarget() == TcpProtocol::eTargetAnalog)
+//        {
+//            char *message = tcpProtocolSlave.toAnswer(tAnalogPort.read((enumAnalogPort)(tcpProtocolSlave.getIdx()-1)));
+//#ifndef STM32F4XX
+//            ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+//            tcpSlave->write(message);
+//#else
+//						pEth->write(message, (int)strlen(message));
+//#endif
+//        }
+//    }
+//}
+
 void TAutomaSerial_Test::monitor(void)
 {
 	if (pEth)
@@ -114,6 +306,38 @@ void TAutomaSerial_Test::monitor(void)
 				sprintf(str, " 0x%02X", msgRx[idx]);
 				PutStr(str);
 			}
+
+
+			parseCommand(msgRx);
+
+#if 0			
+			//ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message received " + QString(data).chopped(1));
+			if (tcpSlave.fromCommand(msgRx))
+			{
+					if (tcpSlave.getTarget() == TcpProtocol::eTargetDin)
+					{
+							char *message = tcpSlave.toAnswer(digitalPort.check((enumDigitalIn)tcpSlave.getIdx()) == HIGH ? TcpProtocol::eStateOn : TcpProtocol::eStateOff);
+							//ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+							pEth->write(message, (int)strlen(message));
+					}
+					else if (tcpSlave.getTarget() == TcpProtocol::eTargetDout)
+					{
+							if (tcpSlave.getState() == TcpProtocol::eStateOn)
+									digitalPort.setNow((enumDigitalOut)tcpSlave.getIdx());
+							else
+									digitalPort.resetNow((enumDigitalOut)tcpSlave.getIdx());
+							char *message = tcpSlave.toAnswer(digitalPort.check((enumDigitalOut)tcpSlave.getIdx()) == HIGH ? TcpProtocol::eStateOn : TcpProtocol::eStateOff);
+							//ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+							pEth->write(message, strlen(message));
+					}
+					else if (tcpSlave.getTarget() == TcpProtocol::eTargetAnalog)
+					{
+							char *message = tcpSlave.toAnswer(tAnalogPort.read((enumAnalogPort)(tcpSlave.getIdx())));
+							//ui->plainTextEditLog->appendPlainText(QTime::currentTime().toString("hh:mm:ss.zzz") + "    Message sent " + QString(message));
+							pEth->write(message, strlen(message));
+					}
+			}
+#endif
 			
 //#ifdef	USE_GPIO_FOR_DEBUG
 //			digitalPort.resetNow(DO_PC9);
@@ -192,9 +416,7 @@ void TAutomaSerial_Test::stat_Init()
 	}
 
 
-#ifdef	USE_GPIO_FOR_DEBUG
 	digitalPort.init();
-#endif
 	
 	if (!err && !err_1)
 	{
@@ -287,14 +509,14 @@ void TAutomaSerial_Test::stat_Menu()
 #endif
 						pEth->write(MSG_TEST, strlen(MSG_TEST));
 						break;
-#ifdef	USE_GPIO_FOR_DEBUG
 					case '6':
+						PutStr("PC8 OFF\n");
 						digitalPort.resetNow(DO_PC8);
 						break;
 					case '7':
+						PutStr("PC8 ON\n");
 						digitalPort.setNow(DO_PC8);
 						break;
-#endif					
 					case 'D':
 						if (pEth)
 						{

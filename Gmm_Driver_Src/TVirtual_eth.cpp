@@ -31,11 +31,11 @@ bool TVirtual_Eth::subscribe(void)
 	
 	if ((eth_InstID = TEthLAN8720::getInstance(pEthLAN8720)) >= 0)
 	{
-	if(pEthLAN8720)
-	{
-		pEthLAN8720->registerRxCallback(this, &TVirtual_Eth::rxCallback);
+		if(pEthLAN8720)
+		{
+			pEthLAN8720->registerRxCallback(this, &TVirtual_Eth::rxCallback);
 			ret = true;
-	}
+		}
 	}
 	
 	return ret;

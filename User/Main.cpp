@@ -27,6 +27,8 @@ extern "C" {
 
 #include "TAutoma_SerialTest.h"
 #include "TAutoma_EthTest.h"
+#include "TDigitalPort.h"
+
 
 
 #if !defined( _FW_VER_MAJOR_ ) || !defined( _FW_VER_MINOR_ )
@@ -159,7 +161,7 @@ TChronoMeter timerTest2_1;
 int main (void)
 {
 	float faDbgAutomaTime[11];
-	bool bNeedUpdateOut;//					
+	bool bNeedUpdateOut;//				
 
 #if WATCHDOG_PWM /** @todo TO REMOVE BEFORE RELEASE xxx! ! !!!! */
 	InitWatchDog_PWM();
@@ -178,7 +180,6 @@ int main (void)
 	timer_DigIO.start();
 	timer_SerAutoma.start();
 
-
 	while(1)
 	{
 //		if (timerPolling.exceed(50.1f))
@@ -192,6 +193,12 @@ int main (void)
 			automaSerial.executeSM();
 			//automaEth.executeSM();
 			timer_SerAutoma.start();
+		}
+		
+		if (timer_DigIO.exceed(50.0f)) //2000
+		{
+			digitalPort.updateIN();
+			timer_DigIO.start();
 		}
 	}
 }

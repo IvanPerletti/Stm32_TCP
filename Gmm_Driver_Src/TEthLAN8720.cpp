@@ -70,16 +70,16 @@ char TEthLAN8720::openInstance(long qID)
 	char error = 0;
 	
 	if (qID >= 0 && qID < MAX_ETHLAN8720_NUM)
+	{
+		if (qOpened.indexOf(qID) < 0)
 		{
-			if (qOpened.indexOf(qID) < 0)
+			if (!isConnected() && qID==0)
 			{
-				if (!isConnected() && qID==0)
-				{
 				if ((error = open()) == 0)
 					qOpened.push(qID);
-				}
 			}
 		}
+	}
 	
 	return error;
 }

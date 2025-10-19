@@ -527,6 +527,21 @@
               <FileType>8</FileType>
               <FilePath>.\User\TDigitalPort.cpp</FilePath>
             </File>
+            <File>
+              <FileName>tcpprotocol.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\tcpprotocol.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>TAnalogPort_S76.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\TAnalogPort_S76.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>ICan.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\ICan.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1721,6 +1736,21 @@
               <FileType>8</FileType>
               <FilePath>.\User\TDigitalPort.cpp</FilePath>
             </File>
+            <File>
+              <FileName>tcpprotocol.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\tcpprotocol.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>TAnalogPort_S76.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\TAnalogPort_S76.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>ICan.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\ICan.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -2797,6 +2827,21 @@
               <FileName>TDigitalPort.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>.\User\TDigitalPort.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>tcpprotocol.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\tcpprotocol.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>TAnalogPort_S76.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\TAnalogPort_S76.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>ICan.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\ICan.cpp</FilePath>
             </File>
           </Files>
         </Group>
@@ -3913,6 +3958,21 @@
               <FileType>8</FileType>
               <FilePath>.\User\TDigitalPort.cpp</FilePath>
             </File>
+            <File>
+              <FileName>tcpprotocol.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\tcpprotocol.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>TAnalogPort_S76.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\TAnalogPort_S76.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>ICan.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\ICan.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -4994,6 +5054,21 @@
               <FileType>8</FileType>
               <FilePath>.\User\TDigitalPort.cpp</FilePath>
             </File>
+            <File>
+              <FileName>tcpprotocol.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\tcpprotocol.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>TAnalogPort_S76.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\TAnalogPort_S76.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>ICan.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\ICan.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -5771,7 +5846,7 @@
             <useXO>0</useXO>
             <VariousControls>
               <MiscControls>--exceptions</MiscControls>
-              <Define>USE_FULL_ASSERT , USE_STDPERIPH_DRIVER , STM32F4XX , HSE_VALUE=8000000 , USE_STM32F4_DISCOVERY , USE_USB_OTG_FS , STM32F40_41xxx , USE_DLL, USE_GPIO_FOR_DEBUG</Define>
+              <Define>USE_FULL_ASSERT , USE_STDPERIPH_DRIVER , STM32F4XX , HSE_VALUE=8000000 , USE_STM32F4_DISCOVERY , USE_USB_OTG_FS , STM32F40_41xxx , USE_DLL</Define>
               <Undefine></Undefine>
               <IncludePath>User;Sys;..\__firmware\Libraries\CMSIS\Include;..\__firmware\Libraries\CMSIS\ST\STM32F4xx\Include;..\__firmware\Libraries\STM32F4xx_StdPeriph_Driver\inc;..\__firmware\Libraries\STM32F4x7_ETH_Driver\inc;..\__firmware\Utilities\STM32F4-Discovery;.\RTE\CMSIS;.\Gmm_Driver_Inc\USB_Support_inc\usb_conf;.\Gmm_Driver_Inc\USB_Support_inc\usb_lib\cdc;.\Gmm_Driver_Inc\USB_Support_inc\usb_lib\core;.\Gmm_Driver_Inc\USB_Support_inc\usb_lib\otg;.\Gmm_Driver_Inc;.\RTE\State_Machine;.\lwip\src\include;.\lwip\src\include\lwip;.\lwip\src\include\netif;.\lwip\src\include\ipv4;.\lwip\port\STM32F4x7;.\lwip\port\STM32F4x7\Standalone</IncludePath>
             </VariousControls>
@@ -6014,6 +6089,21 @@
               <FileName>TDigitalPort.cpp</FileName>
               <FileType>8</FileType>
               <FilePath>.\User\TDigitalPort.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>tcpprotocol.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\tcpprotocol.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>TAnalogPort_S76.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\TAnalogPort_S76.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>ICan.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\User\ICan.cpp</FilePath>
             </File>
           </Files>
         </Group>

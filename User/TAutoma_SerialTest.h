@@ -17,6 +17,8 @@
 #include <TSerial232.h>		// RS232 ...
 #include <TSerial485.h>		// RS485 ...
 
+#include "ICan.h"
+
 class TAutomaSerial_Test
 {
 public:
@@ -34,6 +36,10 @@ private:
 	} structSM; // state machine
 
 	structSM       state;
+
+	void parseCommand(char *message);
+	
+	ICan* pCan;
 
 protected:
 	// state machine
