@@ -13,7 +13,7 @@
 #include "TAutoma_SerialTest.h"
 
 #include "TDigitalPort.h"
-#include "TAnalogPort_S76.h"
+#include "TAnalogPort.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,8 +80,6 @@ TAutomaSerial_Test::TAutomaSerial_Test(void):
 
 	pEth = &eth;
 
-	ICan::getInstance(pCan);
-	
 	//timoutRX.start();
 	state	= ST_INIT;
 }
